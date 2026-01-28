@@ -14,6 +14,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { usePaywall } from "@/hooks/use-paywall"
 
 export default function ETFsPage() {
     const [selectedETF, setSelectedETF] = useState<ETF | null>(null)
@@ -21,7 +22,7 @@ export default function ETFsPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState("all")
     const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
-    const [sortBy, setSortBy] = useState<"name" | "ytd" | "expense">("ytd")
+    const [sortBy, setSortBy] = useState<"name" | "ytd" | "expense" | "inception">("ytd")
 
     const filteredETFs = useMemo(() => {
         let result = filterETFsByCategory(selectedCategory)
@@ -34,12 +35,26 @@ export default function ETFsPage() {
             )
         }
         if (sortBy === "ytd") result = [...result].sort((a, b) => b.performance.ytd - a.performance.ytd)
+        else if (sortBy === "inception") result = [...result].sort((a, b) => b.performance.sinceInception - a.performance.sinceInception)
         else if (sortBy === "expense") result = [...result].sort((a, b) => a.expenseRatio - b.expenseRatio)
         else result = [...result].sort((a, b) => a.ticker.localeCompare(b.ticker))
         return result
     }, [selectedCategory, searchQuery, sortBy])
 
-    const handleETFClick = (etf: ETF) => { setSelectedETF(etf); setIsModalOpen(true) }
+    const { incrementEtfView, isLimitReached, setPaywallOpen } = usePaywall()
+
+    const handleETFClick = (etf: ETF) => {
+        if (isLimitReached) {
+            setPaywallOpen(true)
+            return
+        }
+        incrementEtfView()
+        // Check immediate state
+        if (usePaywall.getState().isLimitReached) return;
+
+        setSelectedETF(etf)
+        setIsModalOpen(true)
+    }
 
     return (
         <div className="min-h-screen bg-background">
@@ -76,6 +91,7 @@ export default function ETFsPage() {
                             <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="gap-2 bg-transparent">Sort<ChevronDown className="w-4 h-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => setSortBy("ytd")}>Best YTD</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSortBy("inception")}>Since Inception</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setSortBy("expense")}>Lowest Fees</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setSortBy("name")}>Alphabetical</DropdownMenuItem>
                             </DropdownMenuContent>

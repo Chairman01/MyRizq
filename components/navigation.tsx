@@ -7,18 +7,19 @@ import { Button } from "@/components/ui/button"
 import {
   Menu,
   X,
-  Home,
   LineChart,
   BookOpen,
   PieChart,
   Heart,
   GitCompare,
   Briefcase,
+  Search,
 } from "lucide-react"
+import { AuthButton } from "@/components/auth/auth-button"
 
 const navLinks = [
-  { href: "/", label: "Home", icon: Home },
   { href: "/etfs", label: "ETFs", icon: PieChart },
+  { href: "/screener", label: "Screener", icon: Search },
   { href: "/compare", label: "Compare", icon: GitCompare },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
   { href: "/analytics", label: "Analytics", icon: LineChart },
@@ -31,15 +32,15 @@ export function Navigation() {
   return (
     <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/myrizq-logo.png"
               alt="MyRizq"
-              width={140}
-              height={40}
-              className="h-10 w-auto"
+              width={220}
+              height={64}
+              className="h-16 w-auto"
               priority
             />
           </Link>
@@ -56,14 +57,9 @@ export function Navigation() {
             ))}
           </div>
 
-          {/* Support Button - Desktop */}
+          {/* Auth - Desktop */}
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/support">
-              <Button className="gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                <Heart className="w-4 h-4" />
-                Support Us
-              </Button>
-            </Link>
+            <AuthButton />
           </div>
 
           {/* Mobile Menu Button */}

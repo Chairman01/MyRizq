@@ -1,8 +1,18 @@
+"use client"
+
 import { etfData } from "@/lib/etf-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LineChart, TrendingUp, TrendingDown, DollarSign, PieChart, ExternalLink } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { LineChart, TrendingUp, DollarSign, ExternalLink, ChevronDown, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 function getRankColor(rank: number, total: number): string {
     const pct = rank / total
@@ -12,10 +22,36 @@ function getRankColor(rank: number, total: number): string {
 }
 
 export default function AnalyticsPage() {
+    const [sortField, setSortField] = useState<"ytd" | "inception" | "expense">("ytd")
+    const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+
+    const sortedData = [...etfData].sort((a, b) => {
+        let valA, valB
+        if (sortField === "ytd") {
+            valA = a.performance.ytd
+            valB = b.performance.ytd
+        } else if (sortField === "inception") {
+            valA = a.performance.sinceInception
+            valB = b.performance.sinceInception
+        } else {
+            valA = a.expenseRatio
+            valB = b.expenseRatio
+        }
+        return sortDirection === "asc" ? valA - valB : valB - valA
+    })
+
     const sortedByYTD = [...etfData].sort((a, b) => b.performance.ytd - a.performance.ytd)
     const sortedByExpense = [...etfData].sort((a, b) => a.expenseRatio - b.expenseRatio)
     const usETFs = etfData.filter(e => e.listing === "US" && e.focus.includes("US"))
-    const globalETFs = etfData.filter(e => e.focus.includes("Global") || e.focus.includes("Ex-US"))
+
+    const toggleSort = (field: "ytd" | "inception" | "expense") => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+        } else {
+            setSortField(field)
+            setSortDirection(field === "expense" ? "asc" : "desc") // Default expense to asc (lower is better)
+        }
+    }
 
     return (
         <div className="min-h-screen bg-background">
@@ -38,15 +74,62 @@ export default function AnalyticsPage() {
 
                 {/* Rankings Table */}
                 <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" />ETF Rankings</CardTitle></CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" />ETF Rankings</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Sort by:</span>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="gap-2">
+                                        {sortField === "ytd" ? "YTD Performance" : sortField === "inception" ? "Since Inception" : "Expense Ratio"}
+                                        <ChevronDown className="w-4 h-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => { setSortField("ytd"); setSortDirection("desc") }}>
+                                        YTD Performance
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setSortField("inception"); setSortDirection("desc") }}>
+                                        Since Inception
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setSortField("expense"); setSortDirection("asc") }}>
+                                        Expense Ratio
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+                            >
+                                <ArrowUpDown className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead><tr className="border-b"><th className="text-left py-3 px-2">Rank</th><th className="text-left py-3 px-2">ETF</th><th className="text-left py-3 px-2">Focus</th><th className="text-right py-3 px-2">Expense</th><th className="text-right py-3 px-2">YTD</th><th className="text-right py-3 px-2">Since Inception</th><th className="text-center py-3 px-2">Listing</th></tr></thead>
+                                <thead>
+                                    <tr className="border-b">
+                                        <th className="text-left py-3 px-2">Rank</th>
+                                        <th className="text-left py-3 px-2">ETF</th>
+                                        <th className="text-left py-3 px-2">Focus</th>
+                                        <th className="text-right py-3 px-2 cursor-pointer hover:text-primary" onClick={() => toggleSort("expense")}>
+                                            Expense {sortField === "expense" && (sortDirection === "asc" ? "↑" : "↓")}
+                                        </th>
+                                        <th className="text-right py-3 px-2 cursor-pointer hover:text-primary" onClick={() => toggleSort("ytd")}>
+                                            YTD {sortField === "ytd" && (sortDirection === "desc" ? "↓" : "↑")}
+                                        </th>
+                                        <th className="text-right py-3 px-2 cursor-pointer hover:text-primary" onClick={() => toggleSort("inception")}>
+                                            Since Inception {sortField === "inception" && (sortDirection === "desc" ? "↓" : "↑")}
+                                        </th>
+                                        <th className="text-center py-3 px-2">Listing</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    {sortedByYTD.map((etf, i) => (
+                                    {sortedData.map((etf, i) => (
                                         <tr key={etf.ticker} className="border-b hover:bg-muted/50">
-                                            <td className="py-3 px-2"><Badge className={getRankColor(i + 1, sortedByYTD.length)}>#{i + 1}</Badge></td>
+                                            <td className="py-3 px-2"><Badge className={getRankColor(i + 1, sortedData.length)}>#{i + 1}</Badge></td>
                                             <td className="py-3 px-2"><span className="font-bold text-primary">{etf.ticker}</span><span className="block text-xs text-muted-foreground">{etf.provider}</span></td>
                                             <td className="py-3 px-2 text-muted-foreground">{etf.focus}</td>
                                             <td className="py-3 px-2 text-right">{etf.expenseRatio.toFixed(2)}%</td>
