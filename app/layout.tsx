@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   description: 'Discover, compare, and learn about Shariah-compliant Stocks, ETFs, Sukuks, and more. Your comprehensive resource for halal investing.',
   keywords: 'Halal ETF, Shariah compliant investing, Islamic finance, SPUS, HLAL, Muslim investing, ethical ETF, halal stocks',
   icons: {
-    icon: '/custom-favicon.png',
-    apple: '/custom-favicon.png',
+    icon: '/Favicon/favicon-32x32.png',
+    apple: '/Favicon/apple-touch-icon.png',
   },
   generator: 'Next.js',
   alternates: {
