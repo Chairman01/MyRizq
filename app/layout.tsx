@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: 'MyRizq - Helping Muslims Navigate Finance',
   description: 'Discover, compare, and learn about Shariah-compliant Stocks, ETFs, Sukuks, and more. Your comprehensive resource for halal investing.',
   keywords: 'Halal ETF, Shariah compliant investing, Islamic finance, SPUS, HLAL, Muslim investing, ethical ETF, halal stocks',
+  icons: {
+    icon: '/favicon.png',
+  },
   generator: 'Next.js',
   icons: {
     icon: '/custom-favicon.png',
