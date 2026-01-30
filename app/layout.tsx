@@ -22,10 +22,6 @@ export const metadata: Metadata = {
     icon: '/favicon.png',
   },
   generator: 'Next.js',
-  icons: {
-    icon: '/custom-favicon.png',
-    apple: '/custom-favicon.png',
-  },
   alternates: {
     canonical: 'https://myrizq.com',
   },
