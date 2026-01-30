@@ -12,7 +12,15 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { etfData } from "@/lib/etf-data"
+import { stockDatabase } from "@/lib/stock-data"
+
+// Charts
+import { FeeAnalyzer } from "@/components/charts/fee-analyzer"
+import { GeographicBreakdown } from "@/components/charts/geographic-breakdown"
+import { ComplianceBreakdown } from "@/components/charts/compliance-breakdown"
+import { AssetAllocation } from "@/components/charts/asset-allocation"
 
 const generateMockHistory = (baseValue: number) => {
     const data = []
@@ -191,8 +199,14 @@ export function DashboardHome() {
                     sectorMap.set(s.sector, (sectorMap.get(s.sector) || 0) + sectorWeight)
                 })
             } else {
-                const sector = "Other"
-                sectorMap.set(sector, (sectorMap.get(sector) || 0) + weight)
+                // Check if it's a stock with known sector
+                const stock = stockDatabase[item.ticker]
+                if (stock && stock.sector) {
+                    sectorMap.set(stock.sector, (sectorMap.get(stock.sector) || 0) + weight)
+                } else {
+                    const sector = "Other"
+                    sectorMap.set(sector, (sectorMap.get(sector) || 0) + weight)
+                }
             }
         })
 
@@ -227,25 +241,38 @@ export function DashboardHome() {
         !isMounted ? null :
             <div className="space-y-8 animate-in fade-in duration-500">
                 {/* Header with Search */}
+                {/* Header with Selector */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                        <p className="text-muted-foreground">Welcome back to your financial overview.</p>
                     </div>
 
-                    {/* Search Bar - Center/Right */}
-                    <div className="relative w-full md:w-96 max-w-lg">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                                placeholder="Quick add asset (e.g. SPUS, HLAL)..."
-                                className="pl-9 bg-white shadow-sm border-gray-200 focus-visible:ring-green-500 rounded-full"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
+                    <div className="flex items-center gap-4">
+                        {/* Portfolio Selector */}
+                        <div className="bg-white p-1 rounded-lg border shadow-sm">
+                            <Select
+                                value={currentPortfolioId}
+                                onValueChange={(val) => selectPortfolio(val)}
+                            >
+                                <SelectTrigger className="w-[200px] border-none shadow-none focus:ring-0">
+                                    <SelectValue placeholder="Select Portfolio" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Portfolios</SelectItem>
+                                    <div className="h-px bg-gray-100 my-1" />
+                                    {Object.values(allPortfolios)
+                                        .filter(p => p.id !== 'all' && p.id !== 'default')
+                                        .map(p => (
+                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                        ))}
+                                    {Object.values(allPortfolios).filter(p => p.id !== 'all').length === 0 && (
+                                        <SelectItem value="default">Default Portfolio</SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-3 hidden md:flex">
                         <Badge variant="outline" className={`bg-opacity-50 border gap-1 transition-colors ${isLoadingData ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${isLoadingData ? 'bg-yellow-500 animate-bounce' : 'bg-green-500 animate-pulse'}`} />
                             {isLoadingData ? 'Updating Prices...' : 'Market Live'}
@@ -254,7 +281,7 @@ export function DashboardHome() {
                 </div>
 
                 {/* Top Cards Grid */}
-                <div className="grid md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {/* Value Card - Spans 2 cols */}
                     <Card className="border-0 shadow-sm bg-gradient-to-br from-green-600 to-green-700 text-white col-span-2">
                         <CardHeader className="pb-2">
@@ -324,7 +351,7 @@ export function DashboardHome() {
                 </div>
 
                 {/* Middle Section: Top Sectors & Holdings (Larger) */}
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Card className="border border-gray-100 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -388,9 +415,9 @@ export function DashboardHome() {
                 </div>
 
                 {/* Main Content Grid - Charts & List */}
-                <div className="grid lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Chart Section */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="space-y-6">
                         <Card className="border border-gray-100 shadow-sm">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle className="text-lg">Performance</CardTitle>
@@ -441,15 +468,17 @@ export function DashboardHome() {
                                 )}
                             </CardContent>
                         </Card>
+                    </div>
 
-                        {/* Holdings List */}
-                        <Card className="border border-gray-100 shadow-sm">
+                    {/* Holdings List */}
+                    <div className="space-y-6">
+                        <Card className="border border-gray-100 shadow-sm h-full">
                             <CardHeader>
-                                <CardTitle className="text-lg">Holdings in {currentPortfolio?.name}</CardTitle>
+                                <CardTitle className="text-lg">Top Holdings</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    {portfolioItems.length > 0 ? portfolioItems.map((item, i) => {
+                                    {portfolioItems.slice(0, 5).map((item, i) => {
                                         const liveData = marketData[item.ticker]
                                         const currentPrice = liveData?.price || item.avgPrice || 100
                                         const value = item.shares ? (item.shares * currentPrice) : (totalValue * item.allocation / 100)
@@ -466,7 +495,6 @@ export function DashboardHome() {
                                                         <div className="font-semibold text-gray-900">{item.name}</div>
                                                         <div className="text-xs text-gray-500">
                                                             {item.shares ? `${item.shares} Shares` : `${item.allocation}% Allocation`}
-                                                            {liveData && <span className="ml-1 text-gray-600 font-medium">• Mkt: ${liveData.price.toFixed(2)}</span>}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -481,54 +509,40 @@ export function DashboardHome() {
                                                 </div>
                                             </div>
                                         )
-                                    }) : (
-                                        <p className="text-center text-gray-500 py-4">No holdings yet. Search above to add!</p>
+                                    })}
+                                    {portfolioItems.length === 0 && (
+                                        <p className="text-center text-gray-500 py-4">No holdings yet.</p>
                                     )}
                                 </div>
-                                {portfolioItems.length > 0 && (
-                                    <div className="mt-4 text-center">
-                                        <Link href="/portfolio">
-                                            <Button variant="outline" className="w-full">Edit Portfolio</Button>
-                                        </Link>
-                                    </div>
-                                )}
+                                <div className="mt-6 text-center">
+                                    <Link href="/portfolio">
+                                        <Button variant="outline" className="w-full">View Full Portfolio</Button>
+                                    </Link>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
+                </div>
 
-                    {/* Sidebar / Recommendations */}
-                    <div className="space-y-6">
-                        {/* Your Portfolios Card (Like Google Finance) */}
-                        <Card className="border border-gray-100 shadow-sm bg-white">
-                            <CardHeader className="pb-3 border-b border-gray-50">
-                                <CardTitle className="text-sm font-semibold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                                    <PieChartIcon className="w-4 h-4 text-gray-500" /> Your Portfolios
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="divide-y divide-gray-50">
-                                    {allPortfolios.map(p => (
-                                        <div
-                                            key={p.id}
-                                            onClick={() => selectPortfolio(p.id)}
-                                            className={`flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 transition-colors ${currentPortfolioId === p.id ? 'bg-green-50/50 border-l-4 border-green-500' : ''}`}
-                                        >
-                                            <div>
-                                                <div className="font-medium text-gray-900 text-sm">{p.name}</div>
-                                                <div className="text-xs text-gray-500">{p.items.length} items</div>
-                                            </div>
-                                            {currentPortfolioId === p.id && <div className="w-2 h-2 rounded-full bg-green-500"></div>}
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="p-4 border-t border-gray-50">
-                                    <Button onClick={handleCreatePortfolio} variant="outline" className="w-full text-green-600 hover:text-green-700 hover:bg-green-50 border-dashed border-green-200">
-                                        + New Portfolio
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                {/* Analytics Section - New */}
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <PieChartIcon className="w-5 h-5" /> Analytics Overview
+                    </h2>
+                    {portfolioItems.length === 0 ? (
+                        <div className="bg-muted/30 border border-dashed rounded-lg p-12 text-center text-muted-foreground">
+                            <PieChartIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                            <h3 className="text-lg font-medium">No Data for Analytics</h3>
+                            <p>Add assets to see your portfolio breakdown and compliance status.</p>
+                        </div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <AssetAllocation items={portfolioItems} />
+                            <ComplianceBreakdown items={portfolioItems} />
+                            <GeographicBreakdown items={portfolioItems} />
+                            <FeeAnalyzer items={portfolioItems} />
+                        </div>
+                    )}
                 </div>
 
                 {/* Quick Add Modal */}

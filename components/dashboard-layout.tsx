@@ -32,72 +32,73 @@ interface DashboardLayoutProps {
     children: React.ReactNode
 }
 
-export function DashboardLayout({ user, children }: DashboardLayoutProps) {
-    const pathname = usePathname()
+const navLinks = [
+    { href: "/", label: "Home", icon: Home },
+    { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+    { href: "/screener", label: "Screener", icon: Search },
+    { href: "/etfs", label: "ETFs", icon: PieChart },
+    { href: "/compare", label: "Compare", icon: GitCompare },
+    { href: "/analytics", label: "Analytics", icon: LineChart },
+    { href: "/blog", label: "Learn", icon: BookOpen },
+    { href: "/feedback", label: "Feedback", icon: Heart },
+]
+
+function DashboardUserProfile({ user, handleSignOut }: { user: User; handleSignOut: () => void }) {
     const router = useRouter()
-    const supabase = createClient()
-    const [isMobileOpen, setIsMobileOpen] = useState(false)
-    const { setPaywallOpen, isPremium } = usePaywall()
+    const { isPremium } = usePaywall()
 
-    const navLinks = [
-        { href: "/", label: "Home", icon: Home },
-        { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-        { href: "/screener", label: "Screener", icon: Search },
-        { href: "/etfs", label: "ETFs", icon: PieChart },
-        { href: "/compare", label: "Compare", icon: GitCompare },
-        { href: "/analytics", label: "Analytics", icon: LineChart },
-        { href: "/blog", label: "Learn", icon: BookOpen },
-    ]
-
-    const handleSignOut = async () => {
-        await supabase.auth.signOut()
-        router.refresh()
-        toast.success('Logged out successfully')
-    }
-
-    const UserProfile = () => {
-        const { isPremium } = usePaywall()
-
-        return (
-            <div className="mx-3 mb-2">
-                <div
-                    onClick={() => router.push('/settings')}
-                    className="flex items-center gap-3 p-3 bg-white hover:bg-gray-50 rounded-xl border border-gray-200 cursor-pointer transition-all shadow-sm group"
-                >
-                    <Avatar className="h-9 w-9 border border-gray-100 ring-2 ring-gray-50 group-hover:ring-green-100 transition-all">
-                        <AvatarFallback className="bg-green-100 text-green-700 font-bold text-xs">
-                            {(user.user_metadata?.username || user.email || 'U').slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-gray-900 group-hover:text-green-700 transition-colors">
-                            {user.user_metadata?.username || user.user_metadata?.first_name || user.email?.split('@')[0]}
+    return (
+        <div className="mx-3 mb-2">
+            <div
+                onClick={() => router.push('/settings')}
+                className="flex items-center gap-3 p-3 bg-white hover:bg-gray-50 rounded-xl border border-gray-200 cursor-pointer transition-all shadow-sm group"
+            >
+                <Avatar className="h-9 w-9 border border-gray-100 ring-2 ring-gray-50 group-hover:ring-green-100 transition-all">
+                    <AvatarFallback className="bg-green-100 text-green-700 font-bold text-xs">
+                        {(user.user_metadata?.username || user.email || 'U').slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate text-gray-900 group-hover:text-green-700 transition-colors">
+                        {user.user_metadata?.username || user.user_metadata?.first_name || user.email?.split('@')[0]}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${isPremium ? 'bg-amber-400' : 'bg-gray-300'}`} />
+                        <p className="text-[10px] font-medium text-muted-foreground truncate">
+                            {isPremium ? 'Premium Member' : 'Free Plan'}
                         </p>
-                        <div className="flex items-center gap-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${isPremium ? 'bg-amber-400' : 'bg-gray-300'}`} />
-                            <p className="text-[10px] font-medium text-muted-foreground truncate">
-                                {isPremium ? 'Premium Member' : 'Free Plan'}
-                            </p>
-                        </div>
                     </div>
                 </div>
-
-                <div className="mt-2 px-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleSignOut}
-                        className="w-full text-muted-foreground hover:text-red-600 hover:bg-red-50 justify-start h-8 px-2 text-xs font-medium"
-                    >
-                        <LogOut className="w-3.5 h-3.5 mr-2" />
-                        Sign Out
-                    </Button>
-                </div>
             </div>
-        )
-    }
 
-    const NavContent = () => (
+            <div className="mt-2 px-1">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="w-full text-muted-foreground hover:text-red-600 hover:bg-red-50 justify-start h-8 px-2 text-xs font-medium"
+                >
+                    <LogOut className="w-3.5 h-3.5 mr-2" />
+                    Sign Out
+                </Button>
+            </div>
+        </div>
+    )
+}
+
+function DashboardNavContent({
+    user,
+    handleSignOut,
+    onLinkClick
+}: {
+    user: User,
+    handleSignOut: () => void,
+    onLinkClick?: () => void
+}) {
+    const pathname = usePathname()
+    const { setPaywallOpen, isPremium } = usePaywall()
+
+    return (
         <div className="flex flex-col h-full bg-card border-r border-border">
             <div className="p-6">
                 <Link href="/" className="flex items-center gap-2">
@@ -116,7 +117,7 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
                 {navLinks.map((link) => {
                     const isActive = pathname === link.href || pathname?.startsWith(link.href + '/')
                     return (
-                        <Link key={link.href} href={link.href} onClick={() => setIsMobileOpen(false)}>
+                        <Link key={link.href} href={link.href} onClick={onLinkClick}>
                             <Button
                                 variant="ghost"
                                 className={`w-full justify-start gap-3 relative overflow-hidden ${isActive
@@ -150,16 +151,27 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
                         </div>
                     </div>
                 )}
-                <UserProfile />
+                <DashboardUserProfile user={user} handleSignOut={handleSignOut} />
             </div>
         </div>
     )
+}
+
+export function DashboardLayout({ user, children }: DashboardLayoutProps) {
+    const supabase = createClient()
+    const [isMobileOpen, setIsMobileOpen] = useState(false)
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut()
+        window.location.href = '/' // Force full reload to clear auth state
+        toast.success('Logged out successfully')
+    }
 
     return (
         <div className="flex min-h-screen bg-gray-50/50">
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex w-72 flex-col fixed inset-y-0 z-50">
-                <NavContent />
+                <DashboardNavContent user={user} handleSignOut={handleSignOut} />
             </aside>
 
             {/* Mobile Header */}
@@ -180,7 +192,11 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="p-0 border-r w-72">
-                        <NavContent />
+                        <DashboardNavContent
+                            user={user}
+                            handleSignOut={handleSignOut}
+                            onLinkClick={() => setIsMobileOpen(false)}
+                        />
                     </SheetContent>
                 </Sheet>
             </div>

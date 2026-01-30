@@ -568,7 +568,7 @@ export const stockDatabase: Record<string, Stock> = {
         deposits: 0,
         accountsReceivable: 7000,
         totalAssets: 120000,
-        revenueBreakdown: { compliant: 96, questionable: 3, nonCompliant: 1 },
+        revenueBreakdown: { compliant: 93, questionable: 1, nonCompliant: 6 },
         businessActivities: ["Consumer Products", "Personal Care", "Household Goods"],
         lastUpdated: "2024-01-15"
     },

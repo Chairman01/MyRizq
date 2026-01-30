@@ -11,7 +11,7 @@ export default function SupportPage() {
                     <Heart className="w-12 h-12 text-primary mx-auto mb-4" />
                     <h1 className="text-4xl font-bold">Support MyRizq</h1>
                     <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-                        Help us maintain and grow this free resource for the Muslim community. Your support enables us to keep MyRizq free, ad-free, and constantly improving.
+                        Help us maintain and grow this resource for the Muslim community. Your support enables us to keep MyRizq ad-free and constantly improving.
                     </p>
                 </div>
             </header>
@@ -21,8 +21,8 @@ export default function SupportPage() {
                 <section>
                     <h2 className="text-2xl font-bold mb-6">Why Support Us?</h2>
                     <div className="grid md:grid-cols-3 gap-6">
-                        <Card><CardContent className="pt-6 text-center"><Star className="w-8 h-8 text-primary mx-auto mb-2" /><h3 className="font-semibold">Keep It Free</h3><p className="text-sm text-muted-foreground">Your support helps us keep MyRizq free for everyone</p></CardContent></Card>
-                        <Card><CardContent className="pt-6 text-center"><Heart className="w-8 h-8 text-accent mx-auto mb-2" /><h3 className="font-semibold">No Ads</h3><p className="text-sm text-muted-foreground">We refuse to show ads - your support funds our operations</p></CardContent></Card>
+                        <Card><CardContent className="pt-6 text-center"><Star className="w-8 h-8 text-primary mx-auto mb-2" /><h3 className="font-semibold">Accessible to All</h3><p className="text-sm text-muted-foreground">Your support helps us keep MyRizq accessible to everyone</p></CardContent></Card>
+                        <Card><CardContent className="pt-6 text-center"><Heart className="w-8 h-8 text-accent mx-auto mb-2" /><h3 className="font-semibold">No Ads</h3><p className="text-sm text-muted-foreground">We refuse to show ads - your support funds our operations directly</p></CardContent></Card>
                         <Card><CardContent className="pt-6 text-center"><Coffee className="w-8 h-8 text-chart-4 mx-auto mb-2" /><h3 className="font-semibold">More Content</h3><p className="text-sm text-muted-foreground">Help us create more educational content and tools</p></CardContent></Card>
                     </div>
                 </section>

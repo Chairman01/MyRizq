@@ -30,14 +30,14 @@ export default function FeedbackPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-green-50/50 to-white">
-            <header className="py-16 text-center">
+            <header className="py-12 text-center bg-gray-50/50 border-b border-gray-100">
                 <div className="max-w-3xl mx-auto px-4">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-green-100 text-green-600 mb-6">
                         <MessageSquarePlus className="w-8 h-8" />
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Feature Requests</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Feedback & Bug Reports</h1>
                     <p className="text-gray-600 text-lg">
-                        Help us build a better MyRizq. Share your ideas and vote on features you'd like to see.
+                        Help us improve. Request features or report any issues you encounter.
                     </p>
                 </div>
             </header>

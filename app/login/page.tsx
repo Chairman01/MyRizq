@@ -58,6 +58,7 @@ export default function LoginPage() {
     const [verifyEmail, setVerifyEmail] = useState("")
     const [otpCode, setOtpCode] = useState("")
     const [resendTimer, setResendTimer] = useState(0)
+    const [registerStep, setRegisterStep] = useState(1) // 1: Plan, 2: Account, 3: Verify (managed by isVerifying)
 
     useEffect(() => {
         if (resendTimer > 0) {
@@ -161,12 +162,13 @@ export default function LoginPage() {
                 // Refresh router to update server components with new session
                 router.refresh()
 
+                // Success!
                 if (selectedPlan === 'free') {
                     toast.success('Account verified!', { duration: 4000 })
-                    router.push('/portfolio')
+                    window.location.href = '/portfolio'
                 } else {
                     toast.success('Account verified! Redirecting to payment...', { duration: 4000 })
-                    router.push(`/checkout?plan=${selectedPlan}`)
+                    window.location.href = `/checkout?plan=${selectedPlan}`
                 }
             }
         })
@@ -294,7 +296,31 @@ export default function LoginPage() {
 
 
                         <TabsContent value="register" className="space-y-4">
-                            {/* OTP Verification UI */}
+                            {/* Progress Bar */}
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-2">
+                                    <div className={`flex flex-col items-center flex-1 ${!isVerifying && !agreedToTerms ? 'text-green-600' : 'text-green-600'}`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${!isVerifying ? 'bg-green-600 text-white' : 'bg-green-100 text-green-600'}`}>1</div>
+                                        <span>Plan</span>
+                                    </div>
+                                    <div className="h-[2px] w-full bg-gray-200 mx-2 relative">
+                                        <div className={`absolute top-0 left-0 h-full bg-green-600 transition-all duration-300 ${isVerifying ? 'w-full' : (agreedToTerms ? 'w-1/2' : 'w-0')}`} />
+                                    </div>
+                                    <div className={`flex flex-col items-center flex-1 ${!isVerifying && agreedToTerms ? 'text-green-600' : (isVerifying ? 'text-green-600' : '')}`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${!isVerifying && agreedToTerms ? 'bg-green-600 text-white' : (isVerifying ? 'bg-green-100 text-green-600 border-2 border-green-600' : 'bg-gray-100')}`}>2</div>
+                                        <span>Account</span>
+                                    </div>
+                                    <div className="h-[2px] w-full bg-gray-200 mx-2 relative">
+                                        <div className={`absolute top-0 left-0 h-full bg-green-600 transition-all duration-300 ${isVerifying ? 'w-full' : 'w-0'}`} />
+                                    </div>
+                                    <div className={`flex flex-col items-center flex-1 ${isVerifying ? 'text-green-600' : ''}`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors border-2 ${isVerifying ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-200 text-gray-500'}`}>3</div>
+                                        <span>Verify</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Step 3: Verification (Existing Logic) */}
                             {isVerifying ? (
                                 <div className="space-y-6 py-4 animate-in fade-in slide-in-from-right-4">
                                     <div className="text-center space-y-2">
@@ -347,96 +373,148 @@ export default function LoginPage() {
                                     </div>
                                 </div>
                             ) : (
-                                /* Registration Form */
                                 <>
-                                    <div className="grid grid-cols-3 gap-2 pb-2">
-                                        <div onClick={() => setSelectedPlan('free')} className={`p-2 border rounded-lg cursor-pointer text-center transition-all ${selectedPlan === 'free' ? 'border-green-600 bg-green-50 ring-1 ring-green-600' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                            <div className="font-bold text-xs uppercase tracking-wider text-gray-500">Free</div>
-                                            <div className="text-xl font-bold">$0</div>
-                                        </div>
-                                        <div onClick={() => setSelectedPlan('monthly')} className={`p-2 border rounded-lg cursor-pointer text-center transition-all ${selectedPlan === 'monthly' ? 'border-green-600 bg-green-50 ring-1 ring-green-600' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                            <div className="font-bold text-xs uppercase tracking-wider text-green-600">Monthly</div>
-                                            <div className="text-xl font-bold">$4.99</div>
-                                        </div>
-                                        <div onClick={() => setSelectedPlan('yearly')} className={`p-2 border rounded-lg cursor-pointer text-center transition-all ${selectedPlan === 'yearly' ? 'border-green-600 bg-green-50 ring-1 ring-green-600' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                            <div className="font-bold text-xs uppercase tracking-wider text-green-600">Yearly</div>
-                                            <div className="text-xl font-bold">$50</div>
-                                        </div>
-                                    </div>
+                                    {/* Step 1: Plan Selection */}
+                                    {registerStep === 1 && (
+                                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div
+                                                    onClick={() => setSelectedPlan('free')}
+                                                    className={`p-4 border rounded-xl cursor-pointer transition-all ${selectedPlan === 'free' ? 'border-green-600 bg-green-50 ring-1 ring-green-600' : 'border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div className="font-bold text-gray-900">Free</div>
+                                                        <div className="text-xl font-bold">$0</div>
+                                                    </div>
+                                                    <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+                                                        <li>Basic Portfolio Tracking</li>
+                                                        <li>3 Stock/ETF Searches per day</li>
+                                                        <li>Community Access</li>
+                                                    </ul>
+                                                </div>
 
-                                    <form action={handleSignup} className="space-y-4">
-                                        <input type="hidden" name="plan" value={selectedPlan} />
-                                        <input type="hidden" name="country" value={selectedCountry} />
+                                                <div
+                                                    onClick={() => setSelectedPlan('monthly')}
+                                                    className={`p-4 border rounded-xl cursor-pointer transition-all ${selectedPlan === 'monthly' ? 'border-green-600 bg-green-50 ring-1 ring-green-600' : 'border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div className="font-bold text-green-700">Monthly Pro</div>
+                                                        <div className="text-xl font-bold">$4.99<span className="text-xs font-normal text-gray-500">/mo</span></div>
+                                                    </div>
+                                                    <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+                                                        <li><strong>7-Day Free Trial</strong></li>
+                                                        <li>Unlimited Searches</li>
+                                                        <li>Advanced Analytics</li>
+                                                    </ul>
+                                                </div>
 
-                                        <div className="space-y-2">
-                                            <Label htmlFor="username">Username</Label>
-                                            <Input id="username" name="username" placeholder="Investor123" required />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="firstName">First name</Label>
-                                                <Input id="firstName" name="firstName" placeholder="Omar" required />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="lastName">Last name</Label>
-                                                <Input id="lastName" name="lastName" placeholder="Ali" required />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="signup-email">Email Address</Label>
-                                            <Input id="signup-email" name="email" type="email" required placeholder="n.salah@liverpool.com" />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="signup-password">Password</Label>
-                                            <Input id="signup-password" name="password" type="password" required minLength={6} placeholder="••••••••" />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label>Country of Residence</Label>
-                                            <Select onValueChange={setSelectedCountry} required>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a country" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {COUNTRIES.map(c => (
-                                                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="phone">Phone Number (Optional)</Label>
-                                            <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" />
-                                        </div>
-
-                                        <div className="space-y-4 pt-2">
-                                            <div className="flex items-start space-x-2">
-                                                <Checkbox id="terms" checked={agreedToTerms} onCheckedChange={(c) => setAgreedToTerms(c as boolean)} />
-                                                <div className="grid gap-1.5 leading-none">
-                                                    <Label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                        I agree to the <Link href="/terms" className="underline hover:text-green-600">Terms & Conditions</Link> and <Link href="/privacy" className="underline hover:text-green-600">Privacy Policy</Link>
-                                                    </Label>
+                                                <div
+                                                    onClick={() => setSelectedPlan('yearly')}
+                                                    className={`relative p-4 border rounded-xl cursor-pointer transition-all ${selectedPlan === 'yearly' ? 'border-green-600 bg-green-50 ring-1 ring-green-600' : 'border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    <div className={`absolute -top-3 right-4 bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full`}>
+                                                        BEST VALUE
+                                                    </div>
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div className="font-bold text-green-700">Yearly Pro</div>
+                                                        <div className="text-xl font-bold">$50<span className="text-xs font-normal text-gray-500">/yr</span></div>
+                                                    </div>
+                                                    <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+                                                        <li><strong>Save ~16%</strong> vs Monthly</li>
+                                                        <li>All Pro Features</li>
+                                                        <li>Priority Support</li>
+                                                    </ul>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-start space-x-2">
-                                                <Checkbox id="marketing" name="marketing" />
-                                                <div className="grid gap-1.5 leading-none">
-                                                    <Label htmlFor="marketing" className="text-sm font-normal text-muted-foreground leading-snug">
-                                                        I would like to receive updates about new Halal investment features and community news.
-                                                    </Label>
+                                            <Button onClick={() => setRegisterStep(2)} className="w-full bg-green-600 hover:bg-green-700 font-bold h-11">
+                                                Continue to Account Details
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {/* Step 2: Account Details */}
+                                    {registerStep === 2 && (
+                                        <form action={handleSignup} className="space-y-4 animate-in fade-in slide-in-from-right-4">
+                                            <div className="flex items-center mb-2">
+                                                <button type="button" onClick={() => setRegisterStep(1)} className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1">
+                                                    <ArrowLeft className="w-4 h-4" /> Change Plan ({selectedPlan === 'free' ? 'Free' : (selectedPlan === 'monthly' ? 'Monthly' : 'Yearly')})
+                                                </button>
+                                            </div>
+
+                                            <input type="hidden" name="plan" value={selectedPlan} />
+                                            <input type="hidden" name="country" value={selectedCountry} />
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="username">Username</Label>
+                                                <Input id="username" name="username" placeholder="Investor123" required />
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="firstName">First name</Label>
+                                                    <Input id="firstName" name="firstName" placeholder="Omar" required />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="lastName">Last name</Label>
+                                                    <Input id="lastName" name="lastName" placeholder="Ali" required />
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 font-bold h-11" disabled={isPending}>
-                                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                            {selectedPlan === 'free' ? 'Create Free Account' : 'Start 7-Day Free Trial'}
-                                        </Button>
-                                    </form>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="signup-email">Email Address</Label>
+                                                <Input id="signup-email" name="email" type="email" required placeholder="n.salah@liverpool.com" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="signup-password">Password</Label>
+                                                <Input id="signup-password" name="password" type="password" required minLength={6} placeholder="••••••••" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Country of Residence</Label>
+                                                <Select onValueChange={setSelectedCountry} required>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a country" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {COUNTRIES.map(c => (
+                                                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="phone">Phone Number (Optional)</Label>
+                                                <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" />
+                                            </div>
+
+                                            <div className="space-y-4 pt-2">
+                                                <div className="flex items-start space-x-2">
+                                                    <Checkbox id="terms" checked={agreedToTerms} onCheckedChange={(c) => setAgreedToTerms(c as boolean)} />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <Label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                            I agree to the <Link href="/terms" className="underline hover:text-green-600">Terms & Conditions</Link> and <Link href="/privacy" className="underline hover:text-green-600">Privacy Policy</Link>
+                                                        </Label>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start space-x-2">
+                                                    <Checkbox id="marketing" name="marketing" />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <Label htmlFor="marketing" className="text-sm font-normal text-muted-foreground leading-snug">
+                                                            I would like to receive updates about new Halal investment features and community news.
+                                                        </Label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 font-bold h-11" disabled={isPending}>
+                                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                {selectedPlan === 'free' ? 'Create Free Account' : 'Start 7-Day Free Trial'}
+                                            </Button>
+                                        </form>
+                                    )}
                                 </>
                             )}
                         </TabsContent>
@@ -474,3 +552,4 @@ export default function LoginPage() {
         </div>
     )
 }
+

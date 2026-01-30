@@ -24,8 +24,9 @@ export function PerformanceChart({ performance }: PerformanceChartProps) {
     { period: "6M", value: performance.sixMonth },
     { period: "YTD", value: performance.ytd },
     { period: "1Y", value: performance.oneYear },
-    { period: "3Y", value: performance.threeYear },
+    ...(performance.threeYear !== null ? [{ period: "3Y", value: performance.threeYear }] : []),
     ...(performance.fiveYear !== null ? [{ period: "5Y", value: performance.fiveYear }] : []),
+    ...(performance.tenYear !== null ? [{ period: "10Y", value: performance.tenYear }] : []),
     { period: "Since Inception", value: performance.sinceInception },
   ]
 
@@ -36,17 +37,17 @@ export function PerformanceChart({ performance }: PerformanceChartProps) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-            <XAxis 
-              dataKey="period" 
+            <XAxis
+              dataKey="period"
               tick={{ fontSize: 12 }}
               tickLine={false}
             />
-            <YAxis 
+            <YAxis
               tick={{ fontSize: 12 }}
               tickLine={false}
               tickFormatter={(value) => `${value}%`}
             />
-            <Tooltip 
+            <Tooltip
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const value = payload[0].value as number
@@ -65,8 +66,8 @@ export function PerformanceChart({ performance }: PerformanceChartProps) {
             <ReferenceLine y={0} stroke="#888" strokeDasharray="3 3" />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
               {data.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
+                <Cell
+                  key={`cell-${index}`}
                   fill={entry.value >= 0 ? 'oklch(0.55 0.18 145)' : 'oklch(0.55 0.22 25)'}
                 />
               ))}
@@ -78,8 +79,8 @@ export function PerformanceChart({ performance }: PerformanceChartProps) {
       {/* Performance Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
         {data.map((item) => (
-          <div 
-            key={item.period} 
+          <div
+            key={item.period}
             className="p-3 bg-muted/50 rounded-lg text-center"
           >
             <p className="text-xs text-muted-foreground mb-1">{item.period}</p>

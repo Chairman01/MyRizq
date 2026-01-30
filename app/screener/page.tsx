@@ -312,7 +312,7 @@ function ScreenerContent() {
                 {/* Available Stocks */}
                 {!result && !notFound && !isLoading && (
                     <div className="text-center mb-8">
-                        <p className="text-sm text-muted-foreground mb-3">Try any stock ticker (powered by Yahoo Finance):</p>
+                        <p className="text-sm text-muted-foreground mb-3">Try any stock ticker:</p>
                         <div className="flex flex-wrap justify-center gap-2">
                             {popularStocks.map((ticker) => (
                                 <Button
@@ -402,7 +402,6 @@ function ScreenerContent() {
                                             )}
                                             <div className="text-right">
                                                 <p className="font-mono text-2xl font-bold">{result.ticker}</p>
-                                                <p className="text-sm text-muted-foreground">Following AAOIFI standards</p>
                                             </div>
                                             <Button
                                                 variant="outline"

@@ -1,7 +1,5 @@
-'use client'
-
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createClient } from '@/utils/supabase/client'
 
 interface PaywallState {
     etfViews: number
@@ -9,13 +7,15 @@ interface PaywallState {
     isLimitReached: boolean
     isPaywallOpen: boolean
     isPremium: boolean
+    isLoading: boolean
+    checkSubscription: () => Promise<void>
     incrementEtfView: () => void
     incrementSearch: () => void
     setPaywallOpen: (open: boolean) => void
-    upgradeToPremium: () => void
-    downgradeToFree: () => void
     reset: () => void
 }
+
+import { persist } from 'zustand/middleware'
 
 export const usePaywall = create<PaywallState>()(
     persist(
@@ -25,35 +25,59 @@ export const usePaywall = create<PaywallState>()(
             isLimitReached: false,
             isPaywallOpen: false,
             isPremium: false,
+            isLoading: true,
+
+            checkSubscription: async () => {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+
+                if (!user) {
+                    set({ isPremium: false, isLoading: false })
+                    return
+                }
+
+                const { data: sub } = await supabase
+                    .from('subscriptions')
+                    .select('status')
+                    .eq('user_id', user.id)
+                    .in('status', ['active', 'trialing'])
+                    .maybeSingle()
+
+                if (sub) {
+                    set({ isPremium: true, isLimitReached: false, isPaywallOpen: false, isLoading: false })
+                } else {
+                    set({ isPremium: false, isLoading: false })
+                }
+            },
+
             incrementEtfView: () => {
                 const { isPremium, etfViews } = get()
-                if (isPremium) return // No limits for premium
+                if (isPremium) return
 
                 const current = etfViews + 1
-                // Limit: 2 views
                 if (current > 2) {
                     set({ isLimitReached: true, isPaywallOpen: true })
                 }
                 set({ etfViews: current })
             },
+
             incrementSearch: () => {
                 const { isPremium, searches } = get()
-                if (isPremium) return // No limits for premium
+                if (isPremium) return
 
                 const current = searches + 1
-                // Limit: 3 searches
                 if (current > 3) {
                     set({ isLimitReached: true, isPaywallOpen: true })
                 }
                 set({ searches: current })
             },
+
             setPaywallOpen: (open) => set({ isPaywallOpen: open }),
-            upgradeToPremium: () => set({ isPremium: true, isLimitReached: false, isPaywallOpen: false }),
-            downgradeToFree: () => set({ isPremium: false }),
             reset: () => set({ etfViews: 0, searches: 0, isLimitReached: false, isPaywallOpen: false }),
         }),
         {
-            name: 'myrizq-usage-storage-v2',
+            name: 'paywall-storage',
+            partialize: (state) => ({ etfViews: state.etfViews, searches: state.searches }),
         }
     )
 )

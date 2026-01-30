@@ -80,6 +80,31 @@ export default function ComparePage() {
             .slice(0, 10)
     }, [selectedData])
 
+    // Percentage Overlap Matrix
+    const overlapMatrix = useMemo(() => {
+        if (selectedData.length < 2) return []
+
+        const matrix: { etf1: string, etf2: string, overlap: number }[] = []
+
+        for (let i = 0; i < selectedData.length; i++) {
+            for (let j = i + 1; j < selectedData.length; j++) {
+                const etf1 = selectedData[i]
+                const etf2 = selectedData[j]
+
+                let overlapWeight = 0
+                etf1.holdings.forEach(h1 => {
+                    const h2 = etf2.holdings.find(h => h.ticker === h1.ticker)
+                    if (h2) {
+                        overlapWeight += Math.min(h1.weight, h2.weight)
+                    }
+                })
+
+                matrix.push({ etf1: etf1.ticker, etf2: etf2.ticker, overlap: overlapWeight })
+            }
+        }
+        return matrix
+    }, [selectedData])
+
     // Performance comparison
     const performanceData = useMemo(() =>
         selectedData.map(etf => ({
@@ -138,7 +163,7 @@ export default function ComparePage() {
                 ) : (
                     <div className="space-y-8">
                         {/* Quick Stats */}
-                        <div className="grid md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             {selectedData.map((etf, i) => (
                                 <Card key={etf.ticker} style={{ borderColor: COLORS[i] }}>
                                     <CardContent className="pt-4">
@@ -174,6 +199,33 @@ export default function ComparePage() {
                                 </ResponsiveContainer>
                             </CardContent>
                         </Card>
+
+                        {/* Overlap Matrix */}
+                        {overlapMatrix.length > 0 && (
+                            <Card>
+                                <CardHeader><CardTitle className="flex items-center gap-2"><GitCompare className="w-5 h-5" />Weighted Overlap</CardTitle></CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {overlapMatrix.map((pair, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="bg-white font-bold">{pair.etf1}</Badge>
+                                                    <span className="text-muted-foreground text-xs">vs</span>
+                                                    <Badge variant="outline" className="bg-white font-bold">{pair.etf2}</Badge>
+                                                </div>
+                                                <div className={`text-lg font-bold ${pair.overlap > 30 ? 'text-orange-600' : 'text-green-600'}`}>
+                                                    {pair.overlap.toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-4 text-center">
+                                        Note: This shows the percentage of weighted intersection between portfolios.
+                                        Higher overlap means less diversification benefit.
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* Holdings Overlap */}
                         {holdingsOverlap.length > 0 && (
@@ -219,13 +271,14 @@ export default function ComparePage() {
                             </CardContent>
                         </Card>
                     </div>
-                )}
+                )
+                }
 
                 <div className="mt-8 flex gap-4">
                     <Link href="/etfs"><Button variant="outline" className="gap-2"><ArrowLeft className="w-4 h-4" />Back to ETFs</Button></Link>
                     <Link href="/portfolio"><Button className="gap-2"><PieChart className="w-4 h-4" />Build Portfolio</Button></Link>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     )
 }

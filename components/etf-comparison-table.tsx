@@ -104,85 +104,126 @@ export function ETFComparisonTable({ etfs, onSelect }: ETFComparisonTableProps) 
   )
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden w-full">
-      <div className="overflow-x-auto">
-        <Table className="w-full min-w-[1200px]">
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="sticky left-0 bg-muted/50 z-10 w-[80px]">Ticker</TableHead>
-              <TableHead className="w-[120px]">Owner</TableHead>
-              <TableHead className="min-w-[280px]">Name</TableHead>
-              <TableHead className="w-[180px]">Focus</TableHead>
-              <TableHead className="text-center w-[80px]">Listing</TableHead>
-              <SortableHeader field="expense" className="text-right w-[120px]">Expense Ratio</SortableHeader>
-              <SortableHeader field="aum" className="text-right w-[120px]">AUM</SortableHeader>
-              <SortableHeader field="ytd" className="text-right w-[100px]">YTD</SortableHeader>
-              <SortableHeader field="oneYear" className="text-right w-[100px]">1Y</SortableHeader>
-              <SortableHeader field="threeYear" className="text-right w-[100px]">3Y</SortableHeader>
-              <SortableHeader field="yield" className="text-right w-[100px]">Yield</SortableHeader>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedETFs.map((etf) => {
-              const isPositiveYTD = etf.performance.ytd >= 0
-              const isPositive1Y = etf.performance.oneYear >= 0
-              const isPositive3Y = (etf.performance.threeYear ?? 0) >= 0
+    <div className="w-full">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {sortedETFs.map((etf) => {
+          const isPositiveYTD = etf.performance.ytd >= 0
+          return (
+            <div
+              key={etf.ticker}
+              className="bg-card border rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => onSelect(etf)}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-bold text-lg text-primary">{etf.ticker}</h3>
+                  <p className="text-sm text-muted-foreground">{etf.name}</p>
+                </div>
+                <Badge variant="secondary">{etf.focus}</Badge>
+              </div>
 
-              return (
-                <TableRow
-                  key={etf.ticker}
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => onSelect(etf)}
-                >
-                  <TableCell className="sticky left-0 bg-card z-10 font-bold text-primary">
-                    {etf.ticker}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {etf.provider}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <span className="line-clamp-1">{etf.name}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs whitespace-nowrap">
-                      {etf.focus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center text-lg">
-                    {etf.listingFlag}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {etf.expenseRatio.toFixed(2)}%
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {etf.aum}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className={`flex items-center justify-end gap-1 ${isPositiveYTD ? 'text-accent' : 'text-destructive'}`}>
-                      {isPositiveYTD ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      <span className="font-medium">
-                        {isPositiveYTD ? '+' : ''}{etf.performance.ytd.toFixed(2)}%
+              <div className="grid grid-cols-2 gap-y-2 text-sm">
+                <div className="text-muted-foreground">Expense Ratio</div>
+                <div className="text-right font-medium">{etf.expenseRatio.toFixed(2)}%</div>
+
+                <div className="text-muted-foreground">AUM</div>
+                <div className="text-right font-medium">{etf.aum}</div>
+
+                <div className="text-muted-foreground">YTD Return</div>
+                <div className={`text-right font-medium ${isPositiveYTD ? 'text-accent' : 'text-destructive'}`}>
+                  {isPositiveYTD ? '+' : ''}{etf.performance.ytd.toFixed(2)}%
+                </div>
+
+                <div className="text-muted-foreground">Yield</div>
+                <div className="text-right font-medium">{etf.distributionYield.toFixed(2)}%</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-lg border border-border overflow-hidden w-full">
+        <div className="overflow-x-auto">
+          <Table className="w-full min-w-[1200px]">
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="sticky left-0 bg-muted/50 z-10 w-[80px]">Ticker</TableHead>
+                <TableHead className="w-[120px]">Owner</TableHead>
+                <TableHead className="min-w-[280px]">Name</TableHead>
+                <TableHead className="w-[180px]">Focus</TableHead>
+                <TableHead className="text-center w-[80px]">Listing</TableHead>
+                <SortableHeader field="expense" className="text-right w-[120px]">Expense Ratio</SortableHeader>
+                <SortableHeader field="aum" className="text-right w-[120px]">AUM</SortableHeader>
+                <SortableHeader field="ytd" className="text-right w-[100px]">YTD</SortableHeader>
+                <SortableHeader field="oneYear" className="text-right w-[100px]">1Y</SortableHeader>
+                <SortableHeader field="threeYear" className="text-right w-[100px]">3Y</SortableHeader>
+                <SortableHeader field="yield" className="text-right w-[100px]">Yield</SortableHeader>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedETFs.map((etf) => {
+                const isPositiveYTD = etf.performance.ytd >= 0
+                const isPositive1Y = etf.performance.oneYear >= 0
+                const isPositive3Y = (etf.performance.threeYear ?? 0) >= 0
+
+                return (
+                  <TableRow
+                    key={etf.ticker}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => onSelect(etf)}
+                  >
+                    <TableCell className="sticky left-0 bg-card z-10 font-bold text-primary">
+                      {etf.ticker}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {etf.provider}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <span className="line-clamp-1">{etf.name}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                        {etf.focus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center text-lg">
+                      {etf.listingFlag}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {etf.expenseRatio.toFixed(2)}%
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {etf.aum}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className={`flex items-center justify-end gap-1 ${isPositiveYTD ? 'text-accent' : 'text-destructive'}`}>
+                        {isPositiveYTD ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        <span className="font-medium">
+                          {isPositiveYTD ? '+' : ''}{etf.performance.ytd.toFixed(2)}%
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className={`font-medium ${isPositive1Y ? 'text-accent' : 'text-destructive'}`}>
+                        {isPositive1Y ? '+' : ''}{etf.performance.oneYear.toFixed(2)}%
                       </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={`font-medium ${isPositive1Y ? 'text-accent' : 'text-destructive'}`}>
-                      {isPositive1Y ? '+' : ''}{etf.performance.oneYear.toFixed(2)}%
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={`font-medium ${isPositive3Y ? 'text-accent' : 'text-destructive'}`}>
-                      {(etf.performance.threeYear ?? 0) > 0 ? `+${(etf.performance.threeYear ?? 0).toFixed(2)}%` : 'N/A'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {etf.distributionYield.toFixed(2)}%
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className={`font-medium ${isPositive3Y ? 'text-accent' : 'text-destructive'}`}>
+                        {(etf.performance.threeYear ?? 0) > 0 ? `+${(etf.performance.threeYear ?? 0).toFixed(2)}%` : 'N/A'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {etf.distributionYield.toFixed(2)}%
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   )

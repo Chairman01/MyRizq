@@ -1,11 +1,13 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, ShieldCheck, CreditCard, Loader2 } from "lucide-react"
-import Link from "next/link"
-import { Suspense, useState } from "react"
+import { Suspense, useState, useEffect } from "react"
+import { createClient } from "@/utils/supabase/client"
+import { loadStripe } from "@stripe/stripe-js"
 
 function CheckoutContent() {
     const searchParams = useSearchParams()
@@ -16,13 +18,54 @@ function CheckoutContent() {
     const priceLabel = isYearly ? "$50.00 / year" : "$4.99 / month"
     const billingPeriod = isYearly ? "Yearly" : "Monthly"
 
+    const [userId, setUserId] = useState<string | null>(null)
     const [isProcessing, setIsProcessing] = useState(false)
 
-    const handleSubscribe = () => {
+    useEffect(() => {
+        const supabase = createClient()
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) setUserId(user.id)
+        })
+    }, [])
+
+    const handleSubscribe = async () => {
+        if (!userId) {
+            window.location.href = "/login?next=/checkout"
+            return
+        }
+
         setIsProcessing(true)
-        // Direct Redirect to User's Stripe Header Link
-        // This handles the trial and subscription without needing custom API keys on our end
-        window.location.href = "https://buy.stripe.com/00wcN5bxj94M1i6bMB38401"
+        try {
+            // 1. Create Checkout Session via API
+            const response = await fetch('/api/create-checkout-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ plan }),
+            })
+
+            const data = await response.json()
+            console.log('Checkout Response:', { status: response.status, data })
+
+            const { sessionId, error } = data
+
+            if (error) {
+                console.error('Checkout error:', JSON.stringify(error, null, 2))
+                setIsProcessing(false)
+                return
+            }
+
+            // 2. Redirect to Stripe (Server-side URL)
+            if (data.url) {
+                window.location.href = data.url
+            } else {
+                throw new Error('No checkout URL returned from server')
+            }
+        } catch (err) {
+            console.error('Payment Error:', err)
+            setIsProcessing(false)
+        }
     }
 
     return (

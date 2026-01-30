@@ -251,8 +251,6 @@ export const etfData: ETF[] = [
     distributionYield: 0.38,
     turnoverRate: 12,
     shariahCertification: "AAOIFI + AFSC Certified",
-    riskLevel: "Moderate",
-    investorType: "Value-Conscious Core US Allocation",
     top10Concentration: 52.0,
     prospectusUrl: "https://www.manzil.ca/etf",
     brokers: [
@@ -271,9 +269,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Dec 2020",
     provider: "SP Funds",
     benchmark: "S&P Global All Equity REIT Shariah Capped Index",
-    description: "The ONLY Shariah-compliant global REIT ETF available. SPRE invests exclusively in real estate companies that produce consistent rental income. Excellent for income-seeking investors wanting real estate exposure without owning physical property.",
     riskLevel: "Moderate",
     investorType: "Income & Diversification",
+    description: "The ONLY Shariah-compliant global REIT ETF available. SPRE invests exclusively in real estate companies that produce consistent rental income. Excellent for income-seeking investors wanting real estate exposure without owning physical property.",
     holdings: [
       { ticker: "PLD", name: "Prologis Inc", weight: 18.50, sector: "Industrial REIT" },
       { ticker: "EQIX", name: "Equinix Inc", weight: 15.20, sector: "Data Center REIT" },
@@ -312,8 +310,6 @@ export const etfData: ETF[] = [
     distributionYield: 4.10,
     turnoverRate: 18,
     shariahCertification: "AAOIFI Certified",
-    riskLevel: "Moderate",
-    investorType: "Income & Diversification",
     top10Concentration: 88.0,
     prospectusUrl: "https://www.sp-funds.com/spre/",
     brokers: [
@@ -333,9 +329,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Dec 2019",
     provider: "SP Funds",
     benchmark: "Dow Jones Sukuk Total Return Index",
-    description: "The ONLY Sukuk ETF in the United States. SPSK invests in Islamic financial certificates similar to bonds but structured to comply with Islamic law. Excellent for conservative investors seeking steady income with lower volatility than equities.",
     riskLevel: "Low",
     investorType: "Fixed Income / Conservative",
+    description: "The ONLY Sukuk ETF in the United States. SPSK invests in Islamic financial certificates similar to bonds but structured to comply with Islamic law. Excellent for conservative investors seeking steady income with lower volatility than equities.",
     holdings: [
       { ticker: "KSASUK", name: "Kingdom of Saudi Arabia Sukuk", weight: 12.50, sector: "Government" },
       { ticker: "SAGLOB", name: "SA Global Sukuk Ltd", weight: 10.80, sector: "Government" },
@@ -377,8 +373,6 @@ export const etfData: ETF[] = [
     distributionYield: 4.85,
     turnoverRate: 25,
     shariahCertification: "AAOIFI Certified",
-    riskLevel: "Low",
-    investorType: "Fixed Income / Conservative",
     top10Concentration: 58.0,
     prospectusUrl: "https://www.sp-funds.com/spsk/",
     brokers: [
@@ -398,9 +392,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Dec 2023",
     provider: "SP Funds",
     benchmark: "S&P Global 1200 Shariah Information Technology Capped Index",
-    description: "Pure technology sector play. SPTE tracks Shariah-compliant large-cap equity securities within the IT sector globally, with nearly 99% invested in technology companies. Best for growth-oriented investors bullish on tech.",
     riskLevel: "High",
     investorType: "Growth / Sector Exposure",
+    description: "Pure technology sector play. SPTE tracks Shariah-compliant large-cap equity securities within the IT sector globally, with nearly 99% invested in technology companies. Best for growth-oriented investors bullish on tech.",
     holdings: [
       { ticker: "TSM", name: "Taiwan Semiconductor (ADR)", weight: 15.80, sector: "Semiconductors" },
       { ticker: "NVDA", name: "NVIDIA Corporation", weight: 14.20, sector: "Semiconductors" },
@@ -444,8 +438,6 @@ export const etfData: ETF[] = [
     distributionYield: 0.28,
     turnoverRate: 15,
     shariahCertification: "AAOIFI Certified",
-    riskLevel: "High",
-    investorType: "Growth / Sector Exposure",
   },
   {
     ticker: "SPWO",
@@ -458,9 +450,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Dec 2023",
     provider: "SP Funds",
     benchmark: "S&P DM Ex-U.S. & EM 50/50 Shariah Index",
-    description: "International diversification without US exposure. SPWO tracks Shariah-compliant companies in developed and emerging markets outside of the U.S., providing global diversification. Pairs well with SPUS or HLAL for complete global exposure.",
     riskLevel: "Moderate",
     investorType: "International Diversification",
+    description: "International diversification without US exposure. SPWO tracks Shariah-compliant companies in developed and emerging markets outside of the U.S., providing global diversification. Pairs well with SPUS or HLAL for complete global exposure.",
     holdings: [
       { ticker: "TSM", name: "Taiwan Semiconductor (ADR)", weight: 12.50, sector: "Technology" },
       { ticker: "NOVO-B", name: "Novo Nordisk A/S (Denmark)", weight: 8.80, sector: "Healthcare" },
@@ -505,8 +497,6 @@ export const etfData: ETF[] = [
     distributionYield: 1.85,
     turnoverRate: 22,
     shariahCertification: "AAOIFI Certified",
-    riskLevel: "Moderate",
-    investorType: "International Diversification",
   },
   {
     ticker: "UMMA",
@@ -519,9 +509,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Apr 2021",
     provider: "Wahed Invest",
     benchmark: "Dow Jones Islamic Market World ex-US Index",
-    description: "Concentrated international portfolio. UMMA provides exposure to the 95 largest Shariah-compliant companies outside of the U.S., representing 21 nations across established markets. More concentrated than SPWO with focus on quality companies.",
     riskLevel: "Moderate",
     investorType: "International Diversification",
+    description: "Concentrated international portfolio. UMMA provides exposure to the 95 largest Shariah-compliant companies outside of the U.S., representing 21 nations across established markets. More concentrated than SPWO with focus on quality companies.",
     holdings: [
       { ticker: "TSM", name: "Taiwan Semiconductor (ADR)", weight: 14.20, sector: "Technology" },
       { ticker: "NOVO-B", name: "Novo Nordisk A/S (Denmark)", weight: 9.50, sector: "Healthcare" },
@@ -566,8 +556,6 @@ export const etfData: ETF[] = [
     distributionYield: 1.25,
     turnoverRate: 32,
     shariahCertification: "Yasaar Limited Certified",
-    riskLevel: "Moderate",
-    investorType: "International Diversification",
   },
   {
     ticker: "WSHR",
@@ -580,9 +568,9 @@ export const etfData: ETF[] = [
     inceptionDate: "May 2021",
     provider: "Wealthsimple",
     benchmark: "Dow Jones Islamic Market Developed Markets Quality & Low Volatility Index",
-    description: "Canada's first Shariah-compliant ETF with a quality/low volatility focus. Best for Canadian investors seeking global diversification with potentially more stable returns through quality and low volatility factors.",
     riskLevel: "Low",
     investorType: "Conservative / Quality Focus",
+    description: "Canada's first Shariah-compliant ETF with a quality/low volatility focus. Best for Canadian investors seeking global diversification with potentially more stable returns through quality and low volatility factors.",
     holdings: [
       { ticker: "BARN", name: "Barry Callebaut AG (Switzerland)", weight: 5.80, sector: "Consumer Staples" },
       { ticker: "KO", name: "The Coca-Cola Company", weight: 5.50, sector: "Consumer Staples" },
@@ -627,8 +615,6 @@ export const etfData: ETF[] = [
     distributionYield: 1.38,
     turnoverRate: 18,
     shariahCertification: "Rating Intelligence Certified",
-    riskLevel: "Low",
-    investorType: "Conservative / Quality Focus",
   },
   {
     ticker: "ISWD",
@@ -641,9 +627,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Dec 2007",
     provider: "BlackRock",
     benchmark: "MSCI World Islamic Index",
-    description: "The oldest and most established Shariah-compliant ETF globally with the LOWEST expense ratio (0.30%). Provides broad exposure to international developed market equities. The gold standard for cost-conscious Halal investors.",
     riskLevel: "Moderate",
     investorType: "Core Global Allocation",
+    description: "The oldest and most established Shariah-compliant ETF globally with the LOWEST expense ratio (0.30%). Provides broad exposure to international developed market equities. The gold standard for cost-conscious Halal investors.",
     holdings: [
       { ticker: "MSFT", name: "Microsoft Corporation", weight: 12.50, sector: "Technology" },
       { ticker: "TSLA", name: "Tesla Inc", weight: 8.20, sector: "Consumer Cyclical" },
@@ -688,8 +674,6 @@ export const etfData: ETF[] = [
     distributionYield: 0.95,
     turnoverRate: 15,
     shariahCertification: "MSCI Islamic Index Certified",
-    riskLevel: "Moderate",
-    investorType: "Core Global Allocation",
   },
   {
     ticker: "ISDE",
@@ -702,9 +686,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Nov 2007",
     provider: "BlackRock",
     benchmark: "MSCI Emerging Markets Islamic Index",
-    description: "The premier emerging markets Halal ETF with 300+ holdings. Provides Shariah-compliant exposure to emerging markets across the world with strong technology focus. Essential for investors seeking growth from developing economies.",
     riskLevel: "High",
     investorType: "Emerging Markets Exposure",
+    description: "The premier emerging markets Halal ETF with 300+ holdings. Provides Shariah-compliant exposure to emerging markets across the world with strong technology focus. Essential for investors seeking growth from developing economies.",
     holdings: [
       { ticker: "TSM", name: "Taiwan Semiconductor (ADR)", weight: 18.50, sector: "Technology" },
       { ticker: "005930", name: "Samsung Electronics (Korea)", weight: 12.80, sector: "Technology" },
@@ -749,8 +733,6 @@ export const etfData: ETF[] = [
     distributionYield: 2.15,
     turnoverRate: 22,
     shariahCertification: "MSCI Islamic Index Certified",
-    riskLevel: "High",
-    investorType: "Emerging Markets Exposure",
   },
   {
     ticker: "IGDA",
@@ -763,9 +745,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Jun 2014",
     provider: "Invesco",
     benchmark: "Dow Jones Islamic Market Developed Markets Index",
-    description: "Well-diversified developed markets exposure. Provides exposure to Shariah-compliant equities in developed markets with a strong tilt towards large-cap growth stocks. Alternative to ISWD with Dow Jones methodology.",
     riskLevel: "Moderate",
     investorType: "Core Global Allocation",
+    description: "Well-diversified developed markets exposure. Provides exposure to Shariah-compliant equities in developed markets with a strong tilt towards large-cap growth stocks. Alternative to ISWD with Dow Jones methodology.",
     holdings: [
       { ticker: "MSFT", name: "Microsoft Corporation", weight: 10.20, sector: "Technology" },
       { ticker: "AAPL", name: "Apple Inc", weight: 9.80, sector: "Technology" },
@@ -810,8 +792,6 @@ export const etfData: ETF[] = [
     distributionYield: 0.72,
     turnoverRate: 18,
     shariahCertification: "Dow Jones Islamic Market Certified",
-    riskLevel: "Moderate",
-    investorType: "Core Global Allocation",
   },
   {
     ticker: "ISDU",
@@ -1001,9 +981,9 @@ export const etfData: ETF[] = [
     inceptionDate: "Nov 2019",
     provider: "BlackRock",
     benchmark: "J.P. Morgan EM Aggregate Sukuk Index",
-    description: "Europe's premier Sukuk ETF. SKUK invests in US dollar-denominated sukuk bonds from emerging markets, adhering to Islamic principles. It provides exposure to the growing sukuk market while maintaining Shariah compliance. Excellent for European investors seeking fixed income alternatives.",
     riskLevel: "Low",
     investorType: "Fixed Income / Conservative",
+    description: "Europe's premier Sukuk ETF. SKUK invests in US dollar-denominated sukuk bonds from emerging markets, adhering to Islamic principles. It provides exposure to the growing sukuk market while maintaining Shariah compliance. Excellent for European investors seeking fixed income alternatives.",
     holdings: [
       { ticker: "KSASUK26", name: "Kingdom of Saudi Arabia 2026", weight: 8.50, sector: "Government" },
       { ticker: "KSASUK29", name: "Kingdom of Saudi Arabia 2029", weight: 7.80, sector: "Government" },
@@ -1046,8 +1026,6 @@ export const etfData: ETF[] = [
     distributionYield: 5.10,
     turnoverRate: 20,
     shariahCertification: "AAOIFI Certified",
-    riskLevel: "Low",
-    investorType: "Fixed Income / Conservative",
     top10Concentration: 54.6,
     prospectusUrl: "https://www.ishares.com/uk/individual/en/products/309040/",
     brokers: [

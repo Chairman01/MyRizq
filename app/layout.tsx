@@ -6,6 +6,7 @@ import { Navigation } from '@/components/navigation'
 import { Footer } from '@/components/footer'
 import { Toaster } from "@/components/ui/sonner"
 import { PricingModal } from "@/components/paywall/pricing-modal"
+import { SubscriptionChecker } from "@/components/paywall/subscription-checker"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { createClient } from "@/utils/supabase/server"
 import './globals.css'
@@ -22,10 +23,27 @@ export const metadata: Metadata = {
     icon: '/custom-favicon.png',
     apple: '/custom-favicon.png',
   },
+  alternates: {
+    canonical: 'https://myrizq.com',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: 'MyRizq - Halal ETF Research Platform',
     description: 'Your trusted source for Shariah-compliant ETF research and Islamic finance education.',
     type: 'website',
+    url: 'https://myrizq.com',
+    siteName: 'MyRizq',
+    images: [
+      {
+        url: 'https://myrizq.com/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'MyRizq Platform',
+      },
+    ],
   },
 }
 
@@ -55,6 +73,7 @@ export default async function RootLayout({
         )}
         <Analytics />
         <Toaster />
+        <SubscriptionChecker />
         <PricingModal />
       </body>
     </html>

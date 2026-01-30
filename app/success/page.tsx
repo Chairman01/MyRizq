@@ -10,21 +10,23 @@ import confetti from "canvas-confetti"
 import { useSearchParams, useRouter } from "next/navigation"
 
 export default function SuccessPage() {
-    const { upgradeToPremium } = usePaywall()
+    const { checkSubscription, isPremium } = usePaywall()
     const searchParams = useSearchParams()
     const router = useRouter()
     const sessionId = searchParams.get("session_id")
 
     useEffect(() => {
         if (!sessionId) {
-            // Security: If no session_id from Stripe, do not upgrade.
-            // Redirect home.
             router.push('/')
             return
         }
 
-        // Activate Premium ONLY if verified (mock verification by presence of ID)
-        upgradeToPremium()
+        // Webhook may take a moment; poll briefly.
+        checkSubscription()
+        const interval = setInterval(() => {
+            checkSubscription()
+        }, 2000)
+        const timeout = setTimeout(() => clearInterval(interval), 30000)
 
         // Celebrate
         confetti({
@@ -32,7 +34,17 @@ export default function SuccessPage() {
             spread: 70,
             origin: { y: 0.6 }
         })
-    }, [upgradeToPremium, sessionId, router])
+        return () => {
+            clearInterval(interval)
+            clearTimeout(timeout)
+        }
+    }, [checkSubscription, sessionId, router])
+
+    useEffect(() => {
+        if (isPremium) {
+            router.push('/portfolio')
+        }
+    }, [isPremium, router])
 
     return (
         <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-4">
@@ -48,7 +60,7 @@ export default function SuccessPage() {
                 <CardContent className="p-8 text-center space-y-6">
                     <div className="space-y-2">
                         <p className="text-gray-600 text-lg">
-                            JazakAllah Khair! You now have unlimited access to all features on MyRizq.
+                            JazakAllah Khair! We’re activating your subscription now. If it doesn’t unlock within a minute, please refresh.
                         </p>
                     </div>
 

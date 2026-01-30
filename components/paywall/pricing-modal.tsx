@@ -14,7 +14,8 @@ import Link from 'next/link'
 import { usePaywall } from '@/hooks/use-paywall'
 import { usePathname, useRouter } from 'next/navigation'
 
-import { startTransition, useState } from 'react'
+import { startTransition, useState, useEffect } from 'react'
+import { createClient } from '@/utils/supabase/client'
 
 export function PricingModal() {
     const { isPaywallOpen, setPaywallOpen } = usePaywall()
@@ -25,17 +26,32 @@ export function PricingModal() {
     // Don't show paywall on login or register pages
     const isOpen = isPaywallOpen && !pathname?.startsWith('/login')
 
+    const [user, setUser] = useState<any>(null)
+    const supabase = createClient()
+
+    useEffect(() => {
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            setUser(user)
+        }
+        checkUser()
+    }, [])
+
     const handleAction = () => {
         setPaywallOpen(false) // Close modal before navigation
 
-        // Simple check: If url doesn't start with /login, we assume user might be logged in or we just send them to checkout
-        // Better: We should check auth state, but for MVP:
+        if (!user) {
+            // If not logged in, force register first -> then to checkout
+            const nextUrl = selectedPlan === 'free' ? '/portfolio' : `/checkout?plan=${selectedPlan}`
+            router.push(`/login?tab=register&next=${encodeURIComponent(nextUrl)}&plan=${selectedPlan}`)
+            return
+        }
+
         if (selectedPlan === 'free') {
-            router.push(`/login?tab=register&plan=free`)
+            // Already logged in, just go to portfolio or stay
+            // checking if they are eligible for free plan is handled by backend logic/limits usually
+            router.push('/portfolio')
         } else {
-            // Check if we are already inside the app (e.g. dashboard)
-            // Or just check if we have a session.
-            // For this specific 'Demo' request, we redirect to checkout to simulate payment.
             router.push(`/checkout?plan=${selectedPlan}`)
         }
     }
@@ -54,7 +70,7 @@ export function PricingModal() {
 
                 <div className="grid gap-4 py-4">
                     {/* Plan Cards */}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div
                             onClick={() => setSelectedPlan('free')}
                             className={`rounded-lg border p-3 cursor-pointer transition-all ${selectedPlan === 'free' ? 'border-green-600 bg-green-50 ring-2 ring-green-600 ring-offset-2' : 'border-gray-200 bg-gray-50 opacity-70 hover:opacity-100'}`}

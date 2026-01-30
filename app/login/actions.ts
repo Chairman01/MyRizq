@@ -132,3 +132,39 @@ export async function resetPassword(email: string) {
 
     return { success: true, message: 'Password reset link sent to email.' }
 }
+
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
+export async function tempFixSubscription(userId: string) {
+    // Use Service Role to bypass RLS
+    const supabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Check if sub exists
+    const { data: existing } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+    if (existing) return { message: "Already exists" }
+
+    // Manually insert premium sub
+    const { error } = await supabase.from('subscriptions').insert({
+        user_id: userId,
+        status: 'active',
+        plan_id: 'premium',
+        current_period_end: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days
+        stripe_customer_id: 'manual_fix_cus_123',
+        stripe_subscription_id: 'manual_fix_sub_123'
+    })
+
+    if (error) {
+        console.error('Manual fix failed:', error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}

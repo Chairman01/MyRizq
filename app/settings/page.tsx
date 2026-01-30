@@ -25,7 +25,7 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [user, setUser] = useState<any>(null)
-    const { isPremium, setPaywallOpen, downgradeToFree } = usePaywall()
+    const { isPremium, setPaywallOpen } = usePaywall()
 
     // Form State
     const [firstName, setFirstName] = useState("")
@@ -138,8 +138,23 @@ export default function SettingsPage() {
                                 </p>
                             </div>
                             {isPremium ? (
-                                <Button size="sm" variant="outline" onClick={() => downgradeToFree()} className="text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0 h-8 text-xs">
-                                    Cancel Subscription
+                                <Button size="sm" variant="outline" onClick={async () => {
+                                    try {
+                                        toast.loading("Redirecting to billing portal...")
+                                        const res = await fetch('/api/create-portal-session', {
+                                            method: 'POST',
+                                        })
+                                        const data = await res.json()
+                                        if (data.url) {
+                                            window.location.href = data.url
+                                        } else {
+                                            toast.error(data.error?.message || "Failed to load portal")
+                                        }
+                                    } catch (e) {
+                                        toast.error("Something went wrong")
+                                    }
+                                }} className="text-gray-700 border-gray-300 hover:bg-gray-100 shrink-0 h-8 text-xs">
+                                    Manage Subscription
                                 </Button>
                             ) : (
                                 <Button size="sm" onClick={() => setPaywallOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shrink-0">

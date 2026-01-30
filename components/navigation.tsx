@@ -24,6 +24,7 @@ const navLinks = [
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
   { href: "/analytics", label: "Analytics", icon: LineChart },
   { href: "/blog", label: "Learn", icon: BookOpen },
+  { href: "/feedback", label: "Feedback", icon: Heart },
 ]
 
 export function Navigation() {
@@ -46,7 +47,7 @@ export function Navigation() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href}>
                 <Button variant="ghost" className="gap-2">
@@ -58,7 +59,7 @@ export function Navigation() {
           </div>
 
           {/* Auth - Desktop */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <AuthButton />
           </div>
 
@@ -66,7 +67,7 @@ export function Navigation() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="lg:hidden"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? (
@@ -79,7 +80,7 @@ export function Navigation() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border animate-in slide-in-from-top-2">
+          <div className="lg:hidden py-4 border-t border-border animate-in slide-in-from-top-2">
             <div className="flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link
@@ -93,7 +94,16 @@ export function Navigation() {
                   </Button>
                 </Link>
               ))}
-              <div className="pt-2 border-t border-border mt-2">
+              <div className="pt-2 border-t border-border mt-2 space-y-2">
+                <div className="flex px-2">
+                  <AuthButton />
+                </div>
+                <Link href="/feedback" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
+                    <Heart className="w-5 h-5" />
+                    Feedback
+                  </Button>
+                </Link>
                 <Link href="/support" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button className="w-full gap-2 bg-gradient-to-r from-primary to-accent">
                     <Heart className="w-4 h-4" />

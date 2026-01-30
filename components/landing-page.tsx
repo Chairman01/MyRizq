@@ -211,19 +211,19 @@ export function LandingPage() {
                     </p>
 
                     {/* CTA Buttons */}
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up">
-                        <Link href="/etfs">
-                            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/30 gap-2 transition-all duration-300 hover:scale-105">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up w-full sm:w-auto px-4 sm:px-0">
+                        <Link href="/etfs" className="w-full sm:w-auto">
+                            <Button size="lg" className="h-14 w-full sm:w-auto px-8 text-lg rounded-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/30 gap-2 transition-all duration-300 hover:scale-105">
                                 Explore Halal ETFs <ArrowRight className="w-5 h-5" />
                             </Button>
                         </Link>
-                        <Link href="/screener">
-                            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/30 gap-2 transition-all duration-300 hover:scale-105">
+                        <Link href="/screener" className="w-full sm:w-auto">
+                            <Button size="lg" className="h-14 w-full sm:w-auto px-8 text-lg rounded-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/30 gap-2 transition-all duration-300 hover:scale-105">
                                 Find Halal Stock
                             </Button>
                         </Link>
-                        <Link href="/portfolio">
-                            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/30 gap-2 transition-all duration-300 hover:scale-105">
+                        <Link href="/portfolio" className="w-full sm:w-auto">
+                            <Button size="lg" className="h-14 w-full sm:w-auto px-8 text-lg rounded-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/30 gap-2 transition-all duration-300 hover:scale-105">
                                 Build Your Portfolio
                             </Button>
                         </Link>
