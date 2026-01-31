@@ -8,9 +8,48 @@ async function getYahooFinance() {
     return new YahooFinance({ suppressNotices: ["yahooSurvey"] })
 }
 
+async function getFxRate(fromCurrency: string, toCurrency: string) {
+    if (!fromCurrency || fromCurrency === toCurrency) return 1
+    const yahooFinance = await getYahooFinance()
+    const directSymbol = `${fromCurrency}${toCurrency}=X`
+    const inverseSymbol = `${toCurrency}${fromCurrency}=X`
+
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const quote: any = await yahooFinance.quote(directSymbol)
+        const price = quote?.regularMarketPrice
+        if (typeof price === "number" && price > 0) return price
+    } catch {
+        // try inverse
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inverseQuote: any = await yahooFinance.quote(inverseSymbol)
+    const inversePrice = inverseQuote?.regularMarketPrice
+    if (typeof inversePrice === "number" && inversePrice > 0) {
+        return 1 / inversePrice
+    }
+    return 1
+}
+
 function toNumber(value: any) {
     if (typeof value === "number") return value
     if (value && typeof value === "object" && typeof value.raw === "number") return value.raw
+    return 0
+}
+
+function toNumberOrNull(value: any) {
+    if (typeof value === "number") return Number.isFinite(value) ? value : null
+    if (value && typeof value === "object" && typeof value.raw === "number") {
+        return Number.isFinite(value.raw) ? value.raw : null
+    }
+    return null
+}
+
+function pickFirstNumber(...values: Array<number | null | undefined>) {
+    for (const value of values) {
+        if (typeof value === "number" && Number.isFinite(value)) return value
+    }
     return 0
 }
 
@@ -33,22 +72,39 @@ async function fetchBatch(tickers: string[]) {
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const quoteSummary: any = await yahooFinance.quoteSummary(ticker, {
-                modules: ["price", "financialData", "summaryProfile", "summaryDetail"]
+                modules: [
+                    "price",
+                    "financialData",
+                    "summaryProfile",
+                    "summaryDetail",
+                    "incomeStatementHistory",
+                    "incomeStatementHistoryQuarterly"
+                ]
             })
             const price = quoteSummary.price
             const financialData = quoteSummary.financialData
             const profile = quoteSummary.summaryProfile
             const summaryDetail = quoteSummary.summaryDetail
+            const incomeHistory = quoteSummary.incomeStatementHistory?.incomeStatementHistory
+            const incomeQuarterly = quoteSummary.incomeStatementHistoryQuarterly?.incomeStatementHistory
+            const earningsValue = pickFirstNumber(
+                toNumberOrNull(financialData?.netIncomeToCommon),
+                toNumberOrNull(financialData?.netIncome),
+                toNumberOrNull(incomeHistory?.[0]?.netIncome),
+                toNumberOrNull(incomeQuarterly?.[0]?.netIncome)
+            )
+            const financialCurrency = financialData?.financialCurrency || price?.currency || "USD"
+            const fxRate = await getFxRate(financialCurrency, "USD")
 
             results.push({
                 ticker: ticker.toUpperCase(),
                 name: price?.longName || price?.shortName || ticker,
-                marketCap: toNumber(price?.marketCap),
-                price: toNumber(price?.regularMarketPrice),
-                priceCurrency: price?.currency || "USD",
+                marketCap: toNumber(price?.marketCap) * fxRate,
+                price: toNumber(price?.regularMarketPrice) * fxRate,
+                priceCurrency: "USD",
                 country: profile?.country || "N/A",
-                revenue: toNumber(financialData?.totalRevenue),
-                earnings: toNumber(financialData?.netIncomeToCommon || financialData?.netIncome),
+                revenue: toNumber(financialData?.totalRevenue) * fxRate,
+                earnings: earningsValue * fxRate,
                 employees: toNumber(profile?.fullTimeEmployees),
                 dividendYield: toNumber(summaryDetail?.dividendYield) * 100
             })

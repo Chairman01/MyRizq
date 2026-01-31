@@ -142,6 +142,7 @@ function ScreenerContent() {
     const [result, setResult] = useState<ScreeningResult | null>(null)
     const [suggestions, setSuggestions] = useState<{ symbol: string, name: string, type: string }[]>([])
     const [showSuggestions, setShowSuggestions] = useState(false)
+    const [suppressSuggestions, setSuppressSuggestions] = useState(false)
     const [showQualitativeDetails, setShowQualitativeDetails] = useState(false)
     const [showQuantitativeDetails, setShowQuantitativeDetails] = useState(false)
     const [showXbrlTags, setShowXbrlTags] = useState(false)
@@ -168,7 +169,7 @@ function ScreenerContent() {
         dividendYield: number
     }[]>([])
     const [topLoading, setTopLoading] = useState(false)
-    const [topSort, setTopSort] = useState<{ key: "rank" | "name" | "marketCap" | "price" | "country"; direction: "asc" | "desc" }>({
+    const [topSort, setTopSort] = useState<{ key: "rank" | "name" | "metric" | "price" | "country"; direction: "asc" | "desc" }>({
         key: "rank",
         direction: "asc"
     })
@@ -213,7 +214,6 @@ function ScreenerContent() {
         })
 
     useEffect(() => {
-        if (result || notFound || isLoading) return
         const fetchTopStocks = async () => {
             setTopLoading(true)
             try {
@@ -229,7 +229,39 @@ function ScreenerContent() {
             }
         }
         fetchTopStocks()
-    }, [topMetric, result, notFound, isLoading])
+    }, [topMetric])
+
+    const metricLabelMap: Record<typeof topMetric, string> = {
+        marketCap: "Market Cap",
+        earnings: "Earnings",
+        revenue: "Revenue",
+        employees: "Employees",
+        dividend: "Dividend %"
+    }
+
+    const formatMetricValue = (stock: typeof topStocks[number]) => {
+        if (topMetric === "employees") {
+            return stock.employees.toLocaleString()
+        }
+        if (topMetric === "dividend") {
+            return `${stock.dividendYield.toFixed(2)}%`
+        }
+        const raw =
+            topMetric === "revenue"
+                ? stock.revenue
+                : topMetric === "earnings"
+                    ? stock.earnings
+                    : stock.marketCap
+        return `$${Math.round(raw / 1_000_000).toLocaleString()}M`
+    }
+
+    const getMetricSortValue = (stock: typeof topStocks[number]) => {
+        if (topMetric === "employees") return stock.employees
+        if (topMetric === "dividend") return stock.dividendYield
+        if (topMetric === "revenue") return stock.revenue
+        if (topMetric === "earnings") return stock.earnings
+        return stock.marketCap
+    }
 
     const sortedTopStocks = (() => {
         const { key, direction } = topSort
@@ -239,14 +271,14 @@ function ScreenerContent() {
         const multiplier = direction === "asc" ? 1 : -1
         return [...topStocks].sort((a, b) => {
             if (key === "name") return a.name.localeCompare(b.name) * multiplier
-            if (key === "marketCap") return (a.marketCap - b.marketCap) * multiplier
+            if (key === "metric") return (getMetricSortValue(a) - getMetricSortValue(b)) * multiplier
             if (key === "price") return (a.price - b.price) * multiplier
             if (key === "country") return a.country.localeCompare(b.country) * multiplier
             return 0
         })
     })()
 
-    const handleTopSort = (key: "rank" | "name" | "marketCap" | "price" | "country") => {
+    const handleTopSort = (key: "rank" | "name" | "metric" | "price" | "country") => {
         setTopSort(prev => ({
             key,
             direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
@@ -264,6 +296,7 @@ function ScreenerContent() {
         setFeedbackSubmitted(false)
         setShowSuggestions(false)
         setSuggestions([])
+        setSuppressSuggestions(false)
         setSearchQuery("")
     }
 
@@ -274,9 +307,13 @@ function ScreenerContent() {
         }
     }, [])
 
-    // Debounced search from Yahoo Finance
+    // Debounced search for tickers
     useEffect(() => {
         if (isLoading) {
+            setShowSuggestions(false)
+            return
+        }
+        if (suppressSuggestions) {
             setShowSuggestions(false)
             return
         }
@@ -306,7 +343,7 @@ function ScreenerContent() {
             setSuggestions([])
             setShowSuggestions(false)
         }
-    }, [searchQuery, isLoading])
+    }, [searchQuery, isLoading, suppressSuggestions])
 
     const { incrementSearch, isLimitReached, setPaywallOpen } = usePaywall()
     const { addToPortfolio, getAllPortfolios } = usePortfolio()
@@ -318,9 +355,11 @@ function ScreenerContent() {
             return
         }
         incrementSearch()
+        if (usePaywall.getState().isLimitReached) return
 
         setShowSuggestions(false)
         setSuggestions([])
+        setSuppressSuggestions(true)
         setSearchQuery(ticker.toUpperCase())
         setIsLoading(true)
         setNotFound(false)
@@ -432,11 +471,14 @@ function ScreenerContent() {
                                 type="text"
                                 placeholder="Search by ticker (e.g., TSLA, AAPL, MSFT)"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value)
+                                    setSuppressSuggestions(false)
+                                }}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
                                 onBlur={() => setShowSuggestions(false)}
                                 onFocus={() => {
-                                    if (suggestions.length > 0) setShowSuggestions(true)
+                                    if (!suppressSuggestions && suggestions.length > 0) setShowSuggestions(true)
                                 }}
                                 className="pl-10 pr-4 py-6 text-lg w-full"
                             />
@@ -485,7 +527,7 @@ function ScreenerContent() {
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                             <h3 className="text-xl font-semibold mb-2">Fetching Real-Time Data...</h3>
                             <p className="text-muted-foreground">
-                                Getting financial data from Yahoo Finance for {searchQuery}
+                                Getting financial data for {searchQuery}
                             </p>
                         </CardContent>
                     </Card>
@@ -580,9 +622,9 @@ function ScreenerContent() {
                                                     Name
                                                     {topSort.key === "name" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
                                                 </button>
-                                                <button type="button" className="col-span-3 text-right flex items-center justify-end gap-1" onClick={() => handleTopSort("marketCap")}>
-                                                    Market Cap
-                                                    {topSort.key === "marketCap" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
+                                                <button type="button" className="col-span-3 text-right flex items-center justify-end gap-1" onClick={() => handleTopSort("metric")}>
+                                                    {metricLabelMap[topMetric]}
+                                                    {topSort.key === "metric" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
                                                 </button>
                                                 <button type="button" className="col-span-2 text-right flex items-center justify-end gap-1" onClick={() => handleTopSort("price")}>
                                                     Price
@@ -608,7 +650,7 @@ function ScreenerContent() {
                                                         <p className="text-sm text-muted-foreground">{stock.name}</p>
                                                     </div>
                                                     <div className="col-span-3 text-right text-sm font-medium">
-                                                        ${Math.round(stock.marketCap / 1_000_000).toLocaleString()}M
+                                                        {formatMetricValue(stock)}
                                                     </div>
                                                     <div className="col-span-2 text-right text-sm font-medium">
                                                         {stock.priceCurrency === "USD" ? "$" : `${stock.priceCurrency} `}

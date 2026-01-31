@@ -38,12 +38,18 @@ export const metadata: Metadata = {
     siteName: 'MyRizq',
     images: [
       {
-        url: 'https://myrizq.com/og-image.png',
+        url: 'https://myrizq.com/myrizq-og.png',
         width: 1200,
         height: 630,
-        alt: 'MyRizq Platform',
+        alt: 'MyRizq - Helping Muslims Navigate Finance',
       },
     ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MyRizq - Halal ETF Research Platform',
+    description: 'Your trusted source for Shariah-compliant ETF research and Islamic finance education.',
+    images: ['https://myrizq.com/myrizq-og.png'],
   },
 }
 

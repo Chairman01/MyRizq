@@ -66,7 +66,7 @@ export const usePaywall = create<PaywallState>()(
                 if (isPremium) return
 
                 const current = etfViews + 1
-                if (current > 2) {
+                if (current > 3) {
                     set({ isLimitReached: true, isPaywallOpen: true })
                 }
                 set({ etfViews: current })
@@ -77,7 +77,7 @@ export const usePaywall = create<PaywallState>()(
                 if (isPremium) return
 
                 const current = searches + 1
-                if (current > 3) {
+                if (current > 2) {
                     set({ isLimitReached: true, isPaywallOpen: true })
                 }
                 set({ searches: current })

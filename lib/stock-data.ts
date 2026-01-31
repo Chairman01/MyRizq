@@ -130,10 +130,19 @@ export const bdsBoycottList: string[] = [
     "NSRGY",  // Nestlé
     "PZZA",   // Papa John's
     "DPZ",    // Domino's
+    "YUM",    // Yum! Brands (Pizza Hut)
+    "QSR",    // Restaurant Brands (Burger King)
     // Technology
     "HPQ",    // HP Inc
     "HPE",    // HP Enterprise
     "INTC",   // Intel
+    "DELL",   // Dell
+    "MSFT",   // Microsoft
+    "GOOGL",  // Alphabet
+    "GOOG",   // Alphabet
+    "AMZN",   // Amazon
+    "CSCO",   // Cisco
+    "WIX",    // Wix
     // Defense & Industrial
     "CAT",    // Caterpillar
     "LMT",    // Lockheed Martin
@@ -141,13 +150,27 @@ export const bdsBoycottList: string[] = [
     "BA",     // Boeing
     "GD",     // General Dynamics
     "NOC",    // Northrop Grumman
+    // Energy / Pharma / Real Estate
+    "CVX",    // Chevron
+    "TEVA",   // Teva
+    "RMAX",   // RE/MAX
     // Finance & Banking (with Israel operations)
     "AXP",    // American Express
+    "AXA.PA", // AXA (Euronext Paris)
     // Retail & Consumer
     "PUMSY",  // Puma
     "ADS.DE", // Adidas (some controversy)
+    "ITX.MC", // Inditex (Zara)
     // Entertainment
     "DIS",    // Disney
+    // Travel / Booking
+    "EXPE",   // Expedia
+    "ABNB",   // Airbnb
+    "BKNG",   // Booking
+    // International tickers
+    "CA.PA",  // Carrefour
+    "SIEGY",  // Siemens ADR
+    "SIE.DE"  // Siemens XETRA
 ]
 
 // Non-Halal Business Activities
@@ -1244,7 +1267,7 @@ export function screenStock(ticker: string): ScreeningResult | null {
 
     // Check BDS status
     if (isBDSListed) {
-        qualitativeIssues.push("Listed on BDS Boycott List - supports Israeli occupation")
+        qualitativeIssues.push("Listed on BDS Boycott List - boycott status makes this stock questionable")
     }
 
     // Determine overall status
@@ -1258,8 +1281,8 @@ export function screenStock(ticker: string): ScreeningResult | null {
         // If any quantitative ratio fails, it's Non-Compliant
         overallStatus = "Non-Compliant"
     } else if (isBDSListed) {
-        // BDS listed is always Non-Compliant
-        overallStatus = "Non-Compliant"
+        // BDS listed is Questionable even if other checks pass
+        overallStatus = "Questionable"
     } else if (stock.sector === "Financial Services") {
         // Financial services (banks, insurance) are Non-Compliant
         overallStatus = "Non-Compliant"
