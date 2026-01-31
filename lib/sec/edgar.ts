@@ -309,7 +309,8 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
         rowExcludeRegex: RegExp | null,
         tag: string,
         maxSegments: number,
-        preferredIndex: number | null
+        preferredIndex: number | null,
+        preferMaxValue: boolean
     ) => {
         const segments: { name: string; value: number; tag: string }[] = []
         const seen = new Set<string>()
@@ -322,7 +323,7 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
             if (rowExcludeRegex?.test(name)) continue
 
             let value: number | null = null
-            if (preferredIndex !== null && preferredIndex >= 1 && preferredIndex < cells.length) {
+            if (!preferMaxValue && preferredIndex !== null && preferredIndex >= 1 && preferredIndex < cells.length) {
                 const raw = cells[preferredIndex]?.replace(/[^\d,]/g, "")
                 if (raw && /\d/.test(raw)) {
                     const parsed = Number(raw.replace(/,/g, ""))
@@ -337,7 +338,7 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                     .map(c => Number(c.replace(/,/g, "")))
                     .filter(n => Number.isFinite(n) && n > 0)
                 if (numbers.length === 0) continue
-                value = numbers[numbers.length - 1]
+                value = preferMaxValue ? Math.max(...numbers) : numbers[numbers.length - 1]
             }
             if (seen.has(name)) continue
             seen.add(name)
@@ -370,7 +371,8 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                 hints.rowExcludeRegex || null,
                 hints.labelTag || "10-K table (ticker hints)",
                 hints.maxSegments || 10,
-                preferredIndex
+                preferredIndex,
+                !!hints.preferMaxValue
             )
             if (segments.length > 0) {
                 if (hints.expectedSegments && hints.expectedSegments.length >= 2 && segments.length < 2) {
@@ -380,6 +382,42 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                 if (!isRevenueLikeSegmentSet(ordered)) return []
                 return ordered
             }
+        }
+
+        let bestSegments: { name: string; value: number; tag: string }[] = []
+        for (const table of tables) {
+            const tableText = stripHtml(table)
+            const rows = table.match(/<tr[\s\S]*?<\/tr>/gi) || []
+            const rowCells = rows.map(row => {
+                return Array.from(row.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi))
+                    .map(m => stripHtml(m[1]).trim())
+                    .filter(Boolean)
+            })
+            const inMillions = /in\s+millions/i.test(tableText)
+            const preferredIndex = getPreferredYearIndex(rowCells)
+            const segments = buildSegmentsFromTable(
+                rowCells,
+                inMillions,
+                hints.rowLabelRegex,
+                hints.rowExcludeRegex || null,
+                hints.labelTag || "10-K table (ticker hints)",
+                hints.maxSegments || 10,
+                preferredIndex,
+                !!hints.preferMaxValue
+            )
+            if (hints.expectedSegments && hints.expectedSegments.length >= 2 && segments.length < 2) continue
+            if (segments.length > bestSegments.length && isRevenueLikeSegmentSet(segments)) {
+                bestSegments = segments
+            }
+        }
+        if (bestSegments.length > 0) {
+            const ordered = orderSegmentsByExpected(bestSegments, hints.expectedSegments)
+            if (!isRevenueLikeSegmentSet(ordered)) return []
+            return ordered
+        }
+
+        if (ticker?.toUpperCase() === "MSFT") {
+            return []
         }
     }
 
@@ -404,7 +442,8 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                 null,
                 "10-K table (meta revenue by type)",
                 6,
-                preferredIndex
+                preferredIndex,
+                false
             )
             if (segments.length > 0 && isRevenueLikeSegmentSet(segments)) return segments
         }
@@ -439,7 +478,7 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                         .map(c => Number(c.replace(/,/g, "")))
                         .filter(n => Number.isFinite(n) && n > 0)
                     if (numbers.length === 0) continue
-                    value = numbers[0]
+                    value = numbers[numbers.length - 1]
                 }
                 if (seen.has(name)) continue
                 seen.add(name)
@@ -480,7 +519,7 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                     .map(c => Number(c.replace(/,/g, "")))
                     .filter(n => Number.isFinite(n) && n > 0)
                 if (numbers.length === 0) continue
-                value = numbers[0]
+                value = numbers[numbers.length - 1]
             }
             if (seen.has(name)) continue
             seen.add(name)

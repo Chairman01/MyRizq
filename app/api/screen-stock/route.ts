@@ -281,7 +281,7 @@ async function fetchStockData(ticker: string): Promise<StockData | null> {
 }
 
 const SEC_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30
-const SEC_CACHE_VERSION = 6
+const SEC_CACHE_VERSION = 10
 
 function getSupabaseAdmin() {
     return createClient(
@@ -396,13 +396,13 @@ async function calculateScreening(data: StockData) {
             data.totalRevenue = secQualitative.totalRevenue / 1_000_000
             if (secQualitative.segments && secQualitative.segments.length > 0) {
                 const haramKeywords = [
-                    "interest", "riba", "gambling", "casino", "gaming", "lottery",
+                    "interest", "riba", "gambling", "casino", "lottery",
                     "alcohol", "beer", "wine", "spirits", "pork", "tobacco",
                     "adult", "porn", "weapon", "defense", "arms", "firearm",
                     "conventional finance", "bank", "insurance"
                 ]
                 const questionableKeywords = [
-                    "other", "services", "licenses", "licensing", "ads", "advertising"
+                    "other", "services", "licenses", "licensing", "ads", "advertising", "gaming"
                 ]
                 const isHaramSegment = (name: string) => {
                     const lower = name.toLowerCase()
@@ -432,7 +432,23 @@ async function calculateScreening(data: StockData) {
                     }
                     if (data.ticker.toUpperCase() === "MSFT") {
                         const lower = name.toLowerCase()
+                        if (lower.includes("search and news advertising") || lower.includes("advertising")) {
+                            return "questionable"
+                        }
+                        if (lower.includes("gaming")) return "questionable"
+                        if (
+                            lower.includes("server products and cloud services")
+                            || lower.includes("microsoft 365 commercial products and cloud services")
+                            || lower.includes("dynamics products and cloud services")
+                            || lower.includes("enterprise and partner services")
+                            || lower.includes("microsoft 365 consumer products and cloud services")
+                            || lower.includes("windows and devices")
+                            || lower.includes("linkedin")
+                        ) {
+                            return "halal"
+                        }
                         if (lower === "other") return "questionable"
+                        return "halal"
                     }
                     if (isHaramSegment(name)) return "haram"
                     if (isQuestionableSegment(name)) return "questionable"

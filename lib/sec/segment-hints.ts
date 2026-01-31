@@ -5,6 +5,7 @@ export type SegmentHints = {
     maxSegments?: number
     labelTag?: string
     expectedSegments?: string[]
+    preferMaxValue?: boolean
 }
 
 const SEGMENT_HINTS: Record<string, SegmentHints> = {
@@ -60,7 +61,8 @@ const SEGMENT_HINTS: Record<string, SegmentHints> = {
         expectedSegments: [
             "Streaming revenues",
             "DVD revenues"
-        ]
+        ],
+        preferMaxValue: true
     },
     AAPL: {
         tableHintRegex: /(net\s+sales|revenue\s+by\s+product|net\s+sales\s+by\s+product|net\s+sales\s+by\s+reportable\s+segment)/i,
@@ -88,7 +90,7 @@ const SEGMENT_HINTS: Record<string, SegmentHints> = {
         ]
     },
     MSFT: {
-        tableHintRegex: /(revenue,\s+classified\s+by\s+significant\s+product\s+and\s+service\s+offerings|significant\s+product\s+and\s+service\s+offerings)/i,
+        tableHintRegex: /(revenue,\s+classified\s+by\s+significant\s+product\s+and\s+service\s+offerings|significant\s+product\s+and\s+service\s+offerings|revenue\s+by\s+significant\s+product\s+and\s+service|significant\s+product\s+and\s+service.*revenue)/i,
         rowLabelRegex: /(server\s+products\s+and\s+cloud\s+services|microsoft\s+365\s+commercial\s+products\s+and\s+cloud\s+services|gaming|linkedin|windows\s+and\s+devices|search\s+and\s+news\s+advertising|dynamics\s+products\s+and\s+cloud\s+services|enterprise\s+and\s+partner\s+services|microsoft\s+365\s+consumer\s+products\s+and\s+cloud\s+services|other)/i,
         rowExcludeRegex: /(total|growth|%)/i,
         maxSegments: 12,

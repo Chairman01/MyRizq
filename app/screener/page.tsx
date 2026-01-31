@@ -279,11 +279,20 @@ function ScreenerContent() {
     })()
 
     const handleTopSort = (key: "rank" | "name" | "metric" | "price" | "country") => {
-        setTopSort(prev => ({
-            key,
-            direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
-        }))
+        setTopSort(prev => {
+            if (key === "metric" && prev.key !== "metric") {
+                return { key, direction: "desc" }
+            }
+            return {
+                key,
+                direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+            }
+        })
     }
+
+    useEffect(() => {
+        setTopSort({ key: "metric", direction: "desc" })
+    }, [topMetric])
 
     const resetSearch = () => {
         setResult(null)
