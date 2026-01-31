@@ -130,7 +130,7 @@ export async function resetPassword(email: string) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
         || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/auth/callback?next=/settings`,
+        redirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent('/settings?recovery=1')}`,
     })
 
     if (error) {

@@ -44,7 +44,7 @@ const generateMockHistory = (baseValue: number) => {
 }
 
 export function DashboardHome() {
-    const { getCurrentPortfolio, getAllPortfolios, createPortfolio, selectPortfolio, currentPortfolioId, addToPortfolio, updateHolding } = usePortfolio()
+    const { getCurrentPortfolio, getAllPortfolios, getAggregatedPortfolio, createPortfolio, selectPortfolio, currentPortfolioId, addToPortfolio, updateHolding } = usePortfolio()
     const { isPremium } = usePaywall()
 
     // Quick Add State
@@ -55,14 +55,17 @@ export function DashboardHome() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
     // Real-time Data
-    const [marketData, setMarketData] = useState<Record<string, { price: number, change: number, changePercent: number }>>({})
+    const [marketData, setMarketData] = useState<Record<string, { price: number, change: number, changePercent: number, currency?: string, usdPrice?: number, usdChange?: number }>>({})
+    const [fxRates, setFxRates] = useState<Record<string, number>>({})
     const [isLoadingData, setIsLoadingData] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
 
     // Get current active portfolio
-    const currentPortfolio = getCurrentPortfolio()
     const allPortfolios = getAllPortfolios()
+    const isAllSelected = currentPortfolioId === 'all'
+    const currentPortfolio = isAllSelected ? getAggregatedPortfolio() : getCurrentPortfolio()
     const portfolioItems = currentPortfolio?.items || []
+    const nonCashItems = portfolioItems.filter(item => item.type !== 'Cash')
 
     useEffect(() => {
         setIsMounted(true)
@@ -94,6 +97,65 @@ export function DashboardHome() {
         // Fetch initially
         fetchPrices()
     }, [currentPortfolioId, portfolioItems.length])
+
+    const cashCurrencies = useMemo(() => {
+        const set = new Set<string>()
+        portfolioItems.forEach(item => {
+            if (item.type === 'Cash' && item.currency) {
+                set.add(item.currency.toUpperCase())
+            }
+        })
+        return Array.from(set)
+    }, [portfolioItems])
+
+    useEffect(() => {
+        const fetchFxRates = async () => {
+            const toFetch = cashCurrencies.filter(c => c !== 'USD' && !fxRates[c])
+            if (toFetch.length === 0) return
+            const updates: Record<string, number> = {}
+            await Promise.all(toFetch.map(async (currency) => {
+                try {
+                    const res = await fetch(`/api/fx?from=${currency}&to=USD`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (typeof data.rate === 'number') {
+                            updates[currency] = data.rate
+                        }
+                    }
+                } catch (e) { }
+            }))
+            if (Object.keys(updates).length > 0) {
+                setFxRates(prev => ({ ...prev, ...updates }))
+            }
+        }
+        fetchFxRates()
+    }, [cashCurrencies, fxRates])
+
+    const getFxRateForCurrency = (currency?: string) => {
+        const code = (currency || 'USD').toUpperCase()
+        if (code === 'USD') return 1
+        return fxRates[code]
+    }
+
+    const getItemUsdPrice = (item: any) => {
+        if (item.type === 'Cash') {
+            const rate = getFxRateForCurrency(item.currency)
+            return typeof rate === 'number' ? rate : 1
+        }
+        const data = marketData[item.ticker]
+        if (typeof data?.usdPrice === 'number') return data.usdPrice
+        return data?.price || item.avgPrice || 100
+    }
+
+    const getItemUsdValue = (item: any) => {
+        if (item.type === 'Cash') {
+            const rate = getFxRateForCurrency(item.currency)
+            const amount = item.amount || 0
+            return typeof rate === 'number' ? amount * rate : amount
+        }
+        const price = getItemUsdPrice(item)
+        return (item.shares || 0) * price
+    }
 
     // Handle Creating New Portfolio
     const handleCreatePortfolio = () => {
@@ -140,8 +202,16 @@ export function DashboardHome() {
     let dayChangeValue = 0
 
     portfolioItems.forEach(item => {
-        const livePrice = marketData[item.ticker]?.price
-        const liveChange = marketData[item.ticker]?.change || 0
+        if (item.type === 'Cash') {
+            const cashValue = getItemUsdValue(item)
+            totalValue += cashValue
+            totalCost += cashValue
+            return
+        }
+
+        const liveData = marketData[item.ticker]
+        const livePrice = getItemUsdPrice(item)
+        const liveChange = liveData?.usdChange ?? liveData?.change ?? 0
 
         // If tracker mode (shares > 0), use that.
         if (item.shares && item.shares > 0) {
@@ -154,7 +224,7 @@ export function DashboardHome() {
             const simulatedValue = 10000 * (item.allocation / 100)
             totalValue += simulatedValue
             totalCost += simulatedValue
-            const changePct = marketData[item.ticker]?.changePercent || 0
+            const changePct = liveData?.changePercent || 0
             dayChangeValue += simulatedValue * (changePct / 100)
         }
     })
@@ -173,7 +243,12 @@ export function DashboardHome() {
 
         let totalVal = 0
         const itemsWithValue = portfolioItems.map(item => {
-            const price = marketData[item.ticker]?.price || item.avgPrice || 100
+            if (item.type === 'Cash') {
+                const val = getItemUsdValue(item)
+                totalVal += val
+                return { ...item, currentValue: val }
+            }
+            const price = getItemUsdPrice(item)
             const val = (item.shares || 0) > 0 ? (item.shares! * price) : (10000 * (item.allocation || 0) / 100)
             totalVal += val
             return { ...item, currentValue: val }
@@ -187,6 +262,11 @@ export function DashboardHome() {
 
         itemsWithValue.forEach(item => {
             const weight = item.currentValue / totalVal
+
+            if (item.type === 'Cash') {
+                sectorMap.set('Cash', (sectorMap.get('Cash') || 0) + weight)
+                return
+            }
 
             if (item.expenseRatio) weightedExpense += item.expenseRatio * weight
 
@@ -234,7 +314,7 @@ export function DashboardHome() {
             sectors,
             holdings
         }
-    }, [portfolioItems, marketData, hasPortfolio])
+    }, [portfolioItems, marketData, hasPortfolio, fxRates])
 
 
     return (
@@ -479,8 +559,33 @@ export function DashboardHome() {
                             <CardContent>
                                 <div className="space-y-4">
                                     {portfolioItems.slice(0, 5).map((item, i) => {
+                                        if (item.type === 'Cash') {
+                                            const value = getItemUsdValue(item)
+                                            return (
+                                                <div key={item.ticker} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-white border flex items-center justify-center text-xs font-bold text-gray-700 shadow-sm">
+                                                            $
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-semibold text-gray-900">Cash</div>
+                                                            <div className="text-xs text-gray-500">
+                                                                {(item.amount || 0).toLocaleString()} {item.currency || 'USD'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="font-medium text-gray-900">
+                                                            ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">USD</div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+
                                         const liveData = marketData[item.ticker]
-                                        const currentPrice = liveData?.price || item.avgPrice || 100
+                                        const currentPrice = getItemUsdPrice(item)
                                         const value = item.shares ? (item.shares * currentPrice) : (totalValue * item.allocation / 100)
                                         const gain = item.shares ? (value - (item.shares * (item.avgPrice || 0))) : 0
                                         const gainPct = item.shares && item.avgPrice ? (gain / (item.shares * item.avgPrice)) * 100 : 0
@@ -529,7 +634,7 @@ export function DashboardHome() {
                     <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <PieChartIcon className="w-5 h-5" /> Analytics Overview
                     </h2>
-                    {portfolioItems.length === 0 ? (
+                    {nonCashItems.length === 0 ? (
                         <div className="bg-muted/30 border border-dashed rounded-lg p-12 text-center text-muted-foreground">
                             <PieChartIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                             <h3 className="text-lg font-medium">No Data for Analytics</h3>
@@ -537,10 +642,10 @@ export function DashboardHome() {
                         </div>
                     ) : (
                         <div className="grid md:grid-cols-2 gap-6">
-                            <AssetAllocation items={portfolioItems} />
-                            <ComplianceBreakdown items={portfolioItems} />
-                            <GeographicBreakdown items={portfolioItems} />
-                            <FeeAnalyzer items={portfolioItems} />
+                            <AssetAllocation items={nonCashItems} />
+                            <ComplianceBreakdown items={nonCashItems} />
+                            <GeographicBreakdown items={nonCashItems} />
+                            <FeeAnalyzer items={nonCashItems} />
                         </div>
                     )}
                 </div>
@@ -567,7 +672,7 @@ export function DashboardHome() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="price">Avg. Buy Price ($)</Label>
+                                    <Label htmlFor="price">Avg. Buy Price (USD)</Label>
                                     <Input
                                         id="price"
                                         placeholder="e.g. 150.00"

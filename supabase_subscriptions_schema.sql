@@ -5,6 +5,7 @@ create table if not exists public.subscriptions (
   status text not null, -- 'active', 'trialing', 'canceled', 'past_due', etc.
   plan_id text, -- 'monthly-4.99' or 'yearly-50'
   current_period_end timestamptz,
+  trial_used boolean not null default false,
   stripe_customer_id text,
   stripe_subscription_id text,
   created_at timestamptz default now(),

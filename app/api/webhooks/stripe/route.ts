@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         stripeCustomerId: string | null
         stripeSubscriptionId: string
         currentPeriodEndIso: string | null
+        trialUsed: boolean
     }) {
         const { error } = await supabaseAdmin
             .from('subscriptions')
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
                     status: args.status,
                     plan_id: args.planId,
                     current_period_end: args.currentPeriodEndIso,
+                    trial_used: args.trialUsed,
                     stripe_customer_id: args.stripeCustomerId,
                     stripe_subscription_id: args.stripeSubscriptionId,
                     updated_at: new Date().toISOString(),
@@ -104,6 +106,7 @@ export async function POST(req: Request) {
             const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId)
             const interval = sub.items.data?.[0]?.price?.recurring?.interval
             const planId = interval === 'year' ? 'yearly' : 'monthly'
+            const trialUsed = !!(sub as any).trial_start || !!(sub as any).trial_end
 
             await upsertSubscriptionRow({
                 userId,
@@ -112,6 +115,7 @@ export async function POST(req: Request) {
                 stripeCustomerId: (sub.customer as string | null) ?? stripeCustomerId,
                 stripeSubscriptionId: sub.id,
                 currentPeriodEndIso: toIsoFromUnixSeconds((sub as any).current_period_end),
+                trialUsed,
             })
 
             return NextResponse.json({ received: true })
@@ -123,6 +127,7 @@ export async function POST(req: Request) {
             const stripeSubscriptionId = subscription.id
             const status = subscription.status
             const currentPeriodEndIso = toIsoFromUnixSeconds((subscription as any).current_period_end)
+            const trialUsed = !!(subscription as any).trial_start || !!(subscription as any).trial_end
 
             // Determine Plan ID from interval (consistent with checkout session logic)
             const interval = subscription.items.data[0]?.price?.recurring?.interval
@@ -147,7 +152,8 @@ export async function POST(req: Request) {
                 planId,
                 stripeCustomerId,
                 stripeSubscriptionId,
-                currentPeriodEndIso
+                currentPeriodEndIso,
+                trialUsed
             })
 
             return NextResponse.json({ received: true })

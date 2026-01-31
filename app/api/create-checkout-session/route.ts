@@ -45,6 +45,35 @@ export async function POST(request: Request) {
             )
         }
 
+        // Check if the user already used a trial
+        let trialUsed = false
+        const { data: subRow, error: subRowError } = await supabase
+            .from('subscriptions')
+            .select('trial_used,status')
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+        if (subRowError) {
+            // Fallback if trial_used column isn't available yet
+            const { data: subFallback } = await supabase
+                .from('subscriptions')
+                .select('status')
+                .eq('user_id', user.id)
+                .maybeSingle()
+            trialUsed = !!subFallback?.status
+        } else {
+            trialUsed = !!subRow?.trial_used
+        }
+
+        const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData = {
+            metadata: {
+                userId: user.id
+            }
+        }
+        if (!trialUsed) {
+            subscriptionData.trial_period_days = 7 // 7-Day Free Trial
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             client_reference_id: user.id,
@@ -56,12 +85,7 @@ export async function POST(request: Request) {
                 },
             ],
             mode: 'subscription',
-            subscription_data: {
-                trial_period_days: 7, // 7-Day Free Trial
-                metadata: {
-                    userId: user.id
-                }
-            },
+            subscription_data: subscriptionData,
             metadata: {
                 userId: user.id // Also put on session for easy access
             },

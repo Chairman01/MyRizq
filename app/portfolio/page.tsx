@@ -23,6 +23,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 
+const COMMON_CURRENCIES = [
+    "USD", "CAD", "EUR", "GBP", "AUD", "NZD", "JPY", "CNY", "INR", "PKR",
+    "SGD", "AED", "SAR", "MYR", "IDR", "TRY", "CHF", "SEK", "NOK", "DKK",
+    "HKD", "KRW", "MXN", "BRL", "ZAR"
+]
+
 export default function PortfolioPage() {
     const {
         portfolios,
@@ -32,8 +38,10 @@ export default function PortfolioPage() {
         deletePortfolio,
         getAggregatedPortfolio,
         updateHolding,
+        updateCash,
         removeFromPortfolio,
         addToPortfolio,
+        addCash,
         setUserId,
         userId
     } = usePortfolio()
@@ -47,11 +55,17 @@ export default function PortfolioPage() {
     const [isAddToOpen, setIsAddToOpen] = useState(false)
     const [pendingAsset, setPendingAsset] = useState<{ ticker: string, name: string, type: 'Stock' | 'ETF', extras?: any } | null>(null)
     const [targetPortfolioId, setTargetPortfolioId] = useState<string>("")
+    const [isCashOpen, setIsCashOpen] = useState(false)
+    const [cashAmount, setCashAmount] = useState("")
+    const [cashCurrency, setCashCurrency] = useState("USD")
+    const [cashCurrencyCustom, setCashCurrencyCustom] = useState("")
+    const [cashTargetPortfolioId, setCashTargetPortfolioId] = useState<string>("")
 
     const supabase = createClient()
 
     // Real-time Data State
-    const [marketData, setMarketData] = useState<Record<string, { price: number, change: number, changePercent: number }>>({})
+    const [marketData, setMarketData] = useState<Record<string, { price: number, change: number, changePercent: number, currency?: string, usdPrice?: number, usdChange?: number }>>({})
+    const [fxRates, setFxRates] = useState<Record<string, number>>({})
 
     useEffect(() => {
         setIsMounted(true)
@@ -66,6 +80,7 @@ export default function PortfolioPage() {
     const isAllSelected = currentPortfolioId === 'all'
     const activePortfolio = isAllSelected ? getAggregatedPortfolio() : (portfolios[currentPortfolioId] || portfolios['default'])
     const portfolioItems = activePortfolio?.items || []
+    const nonCashItems = portfolioItems.filter(item => item.type !== 'Cash')
 
     // Sorting State
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'mktValue', direction: 'desc' })
@@ -76,16 +91,14 @@ export default function PortfolioPage() {
 
         return items.sort((a, b) => {
             // Get necessary data for sorting
-            const aData = marketData[a.ticker]
-            const bData = marketData[b.ticker]
-            const aPrice = aData?.price || a.avgPrice || 0
-            const bPrice = bData?.price || b.avgPrice || 0
+            const aPrice = getItemUsdPrice(a)
+            const bPrice = getItemUsdPrice(b)
 
             // Computed values
-            const aValue = (a.shares || 0) * aPrice
-            const bValue = (b.shares || 0) * bPrice
-            const aCost = (a.shares || 0) * (a.avgPrice || 0)
-            const bCost = (b.shares || 0) * (b.avgPrice || 0)
+            const aValue = getItemUsdValue(a)
+            const bValue = getItemUsdValue(b)
+            const aCost = getItemUsdCost(a)
+            const bCost = getItemUsdCost(b)
             const aGain = aValue - aCost
             const bGain = bValue - bCost
             const aCompliant = checkCompliance(a.ticker, a.type)
@@ -141,7 +154,7 @@ export default function PortfolioPage() {
             if (aSortVal > bSortVal) return sortConfig.direction === 'asc' ? 1 : -1
             return 0
         })
-    }, [portfolioItems, marketData, sortConfig])
+    }, [portfolioItems, marketData, sortConfig, fxRates])
 
     const requestSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'desc' // Default to desc for financial data
@@ -170,6 +183,72 @@ export default function PortfolioPage() {
         }
         fetchPrices()
     }, [portfolioItems.length])
+
+    const cashCurrencies = useMemo(() => {
+        const set = new Set<string>()
+        portfolioItems.forEach(item => {
+            if (item.type === 'Cash' && item.currency) {
+                set.add(item.currency.toUpperCase())
+            }
+        })
+        return Array.from(set)
+    }, [portfolioItems])
+
+    useEffect(() => {
+        const fetchFxRates = async () => {
+            const toFetch = cashCurrencies.filter(c => c !== 'USD' && !fxRates[c])
+            if (toFetch.length === 0) return
+            const updates: Record<string, number> = {}
+            await Promise.all(toFetch.map(async (currency) => {
+                try {
+                    const res = await fetch(`/api/fx?from=${currency}&to=USD`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (typeof data.rate === 'number') {
+                            updates[currency] = data.rate
+                        }
+                    }
+                } catch (e) { }
+            }))
+            if (Object.keys(updates).length > 0) {
+                setFxRates(prev => ({ ...prev, ...updates }))
+            }
+        }
+        fetchFxRates()
+    }, [cashCurrencies, fxRates])
+
+    const getFxRateForCurrency = (currency?: string) => {
+        const code = (currency || 'USD').toUpperCase()
+        if (code === 'USD') return 1
+        return fxRates[code]
+    }
+
+    const getItemUsdPrice = (item: any) => {
+        if (item.type === 'Cash') {
+            const rate = getFxRateForCurrency(item.currency)
+            return typeof rate === 'number' ? rate : 1
+        }
+        const data = marketData[item.ticker]
+        if (typeof data?.usdPrice === 'number') return data.usdPrice
+        return data?.price || item.avgPrice || 0
+    }
+
+    const getItemUsdValue = (item: any) => {
+        if (item.type === 'Cash') {
+            const rate = getFxRateForCurrency(item.currency)
+            const amount = item.amount || 0
+            return typeof rate === 'number' ? amount * rate : amount
+        }
+        const price = getItemUsdPrice(item)
+        return (item.shares || 0) * price
+    }
+
+    const getItemUsdCost = (item: any) => {
+        if (item.type === 'Cash') {
+            return getItemUsdValue(item)
+        }
+        return (item.shares || 0) * (item.avgPrice || 0)
+    }
 
     // Available Assets - Split logic
     const { stocks, etfs } = useMemo(() => {
@@ -213,12 +292,8 @@ export default function PortfolioPage() {
     }, [portfolioItems, searchQuery])
 
     // Calculate Totals
-    const totalValue = portfolioItems.reduce((sum: number, item) => {
-        const price = marketData[item.ticker]?.price || item.avgPrice || 0
-        return sum + (item.shares || 0) * price
-    }, 0)
-
-    const totalCost = portfolioItems.reduce((sum, item) => sum + (item.shares || 0) * (item.avgPrice || 0), 0)
+    const totalValue = portfolioItems.reduce((sum: number, item) => sum + getItemUsdValue(item), 0)
+    const totalCost = portfolioItems.reduce((sum, item) => sum + getItemUsdCost(item), 0)
     const totalGain = totalValue - totalCost
     const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0
 
@@ -267,6 +342,30 @@ export default function PortfolioPage() {
             setIsAddToOpen(false)
             setPendingAsset(null)
         }
+    }
+
+    const openCashDialog = () => {
+        if (isAllSelected) {
+            const available = Object.values(portfolios).filter(p => p.id !== 'all')
+            if (available.length > 0) setCashTargetPortfolioId(available[0].id)
+        }
+        setIsCashOpen(true)
+    }
+
+    const getCashCurrencyCode = () => {
+        const raw = cashCurrency === 'OTHER' ? cashCurrencyCustom : cashCurrency
+        return raw.trim().toUpperCase()
+    }
+
+    const confirmAddCash = () => {
+        const currency = getCashCurrencyCode()
+        const amount = parseFloat(cashAmount)
+        if (!currency || currency.length < 3 || !amount || amount <= 0) return
+        addCash(currency, amount, isAllSelected ? cashTargetPortfolioId : undefined)
+        setCashAmount("")
+        setCashCurrency("USD")
+        setCashCurrencyCustom("")
+        setIsCashOpen(false)
     }
 
 
@@ -395,6 +494,14 @@ export default function PortfolioPage() {
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 className="mb-2"
                                             />
+                                            <Button
+                                                variant="outline"
+                                                className="w-full justify-start gap-2"
+                                                onClick={openCashDialog}
+                                            >
+                                                <DollarSign className="w-4 h-4 text-green-600" />
+                                                Add Cash (Any Currency)
+                                            </Button>
                                         </div>
 
                                         <Tabs defaultValue="etfs" className="flex-1 flex flex-col overflow-hidden">
@@ -484,19 +591,19 @@ export default function PortfolioPage() {
                                                             Shares {sortConfig.key === 'shares' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                                         </div>
                                                         <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('avgPrice')}>
-                                                            Avg Price {sortConfig.key === 'avgPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            Avg Price (USD) {sortConfig.key === 'avgPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                                         </div>
                                                         <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('mktPrice')}>
-                                                            Mkt Price {sortConfig.key === 'mktPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            Mkt Price (USD) {sortConfig.key === 'mktPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                                         </div>
                                                         <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('costBasis')}>
-                                                            Cost Basis {sortConfig.key === 'costBasis' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            Cost Basis (USD) {sortConfig.key === 'costBasis' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                                         </div>
                                                         <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('mktValue')}>
-                                                            Mkt Value {sortConfig.key === 'mktValue' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            Mkt Value (USD) {sortConfig.key === 'mktValue' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                                         </div>
                                                         <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('gain')}>
-                                                            Gain {sortConfig.key === 'gain' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            Gain (USD) {sortConfig.key === 'gain' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                                         </div>
                                                         <div className="w-6"></div>
                                                     </div>
@@ -504,23 +611,27 @@ export default function PortfolioPage() {
                                                     {/* List Items */}
                                                     {sortedItems.map((item, index) => {
                                                         const itemData = marketData[item.ticker]
-                                                        const itemPrice = itemData?.price || item.avgPrice || 0
-
-                                                        const itemValue = (item.shares || 0) * itemPrice
-                                                        const itemCost = (item.shares || 0) * (item.avgPrice || 0)
+                                                        const itemPrice = getItemUsdPrice(item)
+                                                        const itemValue = getItemUsdValue(item)
+                                                        const itemCost = getItemUsdCost(item)
                                                         const itemGain = itemValue - itemCost
                                                         const itemGainPct = itemCost > 0 ? (itemGain / itemCost) * 100 : 0
+                                                        const isCash = item.type === 'Cash'
 
                                                         // Compliance Handling
                                                         let isCompliant = false
 
-                                                        const checkRes = checkCompliance(item.ticker, item.type)
-                                                        isCompliant = checkRes
+                                                        if (isCash) {
+                                                            isCompliant = true
+                                                        } else {
+                                                            const checkRes = checkCompliance(item.ticker, item.type)
+                                                            isCompliant = checkRes
+                                                        }
                                                         const statusText = isCompliant ? 'Shariah Compliant' : 'Non-Shariah Compliant'
 
                                                         // Find which portfolio this item belongs to
                                                         const pNames = Object.values(portfolios)
-                                                            .filter(p => p.items.some(i => i.ticker === item.ticker && i.shares === item.shares))
+                                                            .filter(p => p.items.some(i => i.ticker === item.ticker && (i.shares === item.shares || i.amount === item.amount)))
                                                             .map(p => p.name)
                                                             .join(", ")
 
@@ -528,10 +639,19 @@ export default function PortfolioPage() {
                                                             <div key={`${item.ticker}-${index}`} className={`grid gap-2 px-3 py-3 items-center hover:bg-gray-50/50 transition-colors group text-sm border-b last:border-0 border-gray-100 ${isAllSelected ? 'grid-cols-[1.5fr_0.8fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]' : 'grid-cols-[2fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]'}`}>
                                                                 {/* 1. Asset Info */}
                                                                 <div className="min-w-0">
-                                                                    <Link href={`/screener?q=${item.ticker}`} className="hover:underline font-bold text-gray-900 truncate text-sm block">
-                                                                        {item.ticker}
-                                                                    </Link>
-                                                                    <span className="text-xs text-muted-foreground truncate block">{item.name}</span>
+                                                                    {isCash ? (
+                                                                        <>
+                                                                            <div className="font-bold text-gray-900 truncate text-sm">Cash</div>
+                                                                            <span className="text-xs text-muted-foreground truncate block">{item.currency || 'USD'}</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Link href={`/screener?q=${item.ticker}`} className="hover:underline font-bold text-gray-900 truncate text-sm block">
+                                                                                {item.ticker}
+                                                                            </Link>
+                                                                            <span className="text-xs text-muted-foreground truncate block">{item.name}</span>
+                                                                        </>
+                                                                    )}
                                                                 </div>
 
                                                                 {/* 2. Portfolio Name - Only if All */}
@@ -543,13 +663,19 @@ export default function PortfolioPage() {
 
                                                                 {/* 3. Compliance */}
                                                                 <div className="min-w-0">
-                                                                    <Badge variant="outline" className={`text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto ${isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                                        {isCompliant ? <ShieldCheck className="w-3 h-3 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
-                                                                        <div className="flex flex-col leading-none gap-0.5">
-                                                                            <span>{isCompliant ? 'Shariah' : 'Non-Shariah'}</span>
-                                                                            <span>Compliant</span>
-                                                                        </div>
-                                                                    </Badge>
+                                                                    {isCash ? (
+                                                                        <Badge variant="outline" className="text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto bg-gray-50 text-gray-600 border-gray-200">
+                                                                            <span>Cash</span>
+                                                                        </Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline" className={`text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto ${isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                                                            {isCompliant ? <ShieldCheck className="w-3 h-3 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
+                                                                            <div className="flex flex-col leading-none gap-0.5">
+                                                                                <span>{isCompliant ? 'Shariah' : 'Non-Shariah'}</span>
+                                                                                <span>Compliant</span>
+                                                                            </div>
+                                                                        </Badge>
+                                                                    )}
                                                                 </div>
 
                                                                 {/* 4. Shares (Input) */}
@@ -558,27 +684,41 @@ export default function PortfolioPage() {
                                                                         disabled={isAllSelected}
                                                                         type="number"
                                                                         className="h-8 text-right font-mono text-xs border border-gray-200 bg-white hover:border-primary focus:border-primary px-2 w-full shadow-sm rounded-md"
-                                                                        value={item.shares || ''}
+                                                                        value={isCash ? (item.amount ?? '') : (item.shares || '')}
                                                                         placeholder="0"
-                                                                        onChange={(e) => updateHolding(item.ticker, parseFloat(e.target.value), item.avgPrice || 0)}
+                                                                        onChange={(e) => {
+                                                                            const value = parseFloat(e.target.value)
+                                                                            if (isCash) {
+                                                                                updateCash(item.ticker, value)
+                                                                            } else {
+                                                                                updateHolding(item.ticker, value, item.avgPrice || 0)
+                                                                            }
+                                                                        }}
                                                                     />
                                                                 </div>
 
                                                                 {/* 5. Avg Price (Input) */}
                                                                 <div className="text-right">
-                                                                    <Input
-                                                                        disabled={isAllSelected}
-                                                                        type="number"
-                                                                        className="h-8 text-right font-mono text-xs border border-gray-200 bg-white hover:border-primary focus:border-primary px-2 w-full shadow-sm rounded-md"
-                                                                        value={item.avgPrice || ''}
-                                                                        placeholder="0.00"
-                                                                        onChange={(e) => updateHolding(item.ticker, item.shares || 0, parseFloat(e.target.value))}
-                                                                    />
+                                                                    {isCash ? (
+                                                                        <span className="text-xs text-muted-foreground">—</span>
+                                                                    ) : (
+                                                                        <Input
+                                                                            disabled={isAllSelected}
+                                                                            type="number"
+                                                                            className="h-8 text-right font-mono text-xs border border-gray-200 bg-white hover:border-primary focus:border-primary px-2 w-full shadow-sm rounded-md"
+                                                                            value={item.avgPrice || ''}
+                                                                            placeholder="0.00"
+                                                                            onChange={(e) => updateHolding(item.ticker, item.shares || 0, parseFloat(e.target.value))}
+                                                                        />
+                                                                    )}
                                                                 </div>
 
                                                                 {/* 6. Market Price (Read Only) */}
                                                                 <div className="text-right font-mono font-medium text-blue-600">
                                                                     ${itemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    {itemData?.currency && itemData.currency !== 'USD' && !isCash && (
+                                                                        <div className="text-[10px] text-muted-foreground">{itemData.currency} → USD</div>
+                                                                    )}
                                                                 </div>
 
                                                                 {/* 7. Cost Basis */}
@@ -618,7 +758,7 @@ export default function PortfolioPage() {
                     </TabsContent>
 
                     <TabsContent value="analytics" className="space-y-6">
-                        {portfolioItems.length === 0 ? (
+                        {nonCashItems.length === 0 ? (
                             <div className="text-center py-20 text-muted-foreground">
                                 <PieChart className="w-12 h-12 mx-auto mb-4 opacity-50" />
                                 <h3 className="text-lg font-medium">No Data for Analytics</h3>
@@ -626,10 +766,10 @@ export default function PortfolioPage() {
                             </div>
                         ) : (
                             <div className="grid md:grid-cols-2 gap-6">
-                                <AssetAllocation items={portfolioItems} />
-                                <ComplianceBreakdown items={portfolioItems} />
-                                <GeographicBreakdown items={portfolioItems} />
-                                <FeeAnalyzer items={portfolioItems} />
+                                <AssetAllocation items={nonCashItems} />
+                                <ComplianceBreakdown items={nonCashItems} />
+                                <GeographicBreakdown items={nonCashItems} />
+                                <FeeAnalyzer items={nonCashItems} />
                             </div>
                         )}
                     </TabsContent>
@@ -666,6 +806,82 @@ export default function PortfolioPage() {
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsAddToOpen(false)}>Cancel</Button>
                             <Button onClick={confirmAddTo}>Add Asset</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Add Cash Dialog */}
+                <Dialog open={isCashOpen} onOpenChange={setIsCashOpen}>
+                    <DialogContent className="w-[90%] sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Add Cash</DialogTitle>
+                            <CardDescription>
+                                Track cash in any currency. Values are converted to USD.
+                            </CardDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                            {isAllSelected && (
+                                <div>
+                                    <Label className="mb-2 block">Target Portfolio</Label>
+                                    <Select value={cashTargetPortfolioId} onValueChange={setCashTargetPortfolioId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.values(portfolios)
+                                                .filter(p => p.id !== 'all' && p.id !== 'default')
+                                                .map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                ))
+                                            }
+                                            {Object.values(portfolios).filter(p => p.id !== 'all').length === 0 && (
+                                                <SelectItem value="default">Default Portfolio</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Currency</Label>
+                                    <Select value={cashCurrency} onValueChange={setCashCurrency}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select currency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COMMON_CURRENCIES.map(code => (
+                                                <SelectItem key={code} value={code}>{code}</SelectItem>
+                                            ))}
+                                            <SelectItem value="OTHER">Other...</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Amount</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={cashAmount}
+                                        onChange={(e) => setCashAmount(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            {cashCurrency === 'OTHER' && (
+                                <div className="space-y-2">
+                                    <Label>Currency Code</Label>
+                                    <Input
+                                        placeholder="e.g. CHF"
+                                        value={cashCurrencyCustom}
+                                        onChange={(e) => setCashCurrencyCustom(e.target.value.toUpperCase())}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCashOpen(false)}>Cancel</Button>
+                            <Button onClick={confirmAddCash} disabled={!cashAmount}>
+                                Add Cash
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/utils/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,7 @@ const COUNTRIES = [
 
 export default function SettingsPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const supabase = createClient()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -33,6 +34,7 @@ export default function SettingsPage() {
     const [country, setCountry] = useState("")
     const [phone, setPhone] = useState("")
     const [username, setUsername] = useState("")
+    const [showRecoveryBanner, setShowRecoveryBanner] = useState(false)
 
     useEffect(() => {
         const getUser = async () => {
@@ -54,6 +56,13 @@ export default function SettingsPage() {
         }
         getUser()
     }, [router])
+
+    useEffect(() => {
+        if (searchParams.get('recovery') === '1') {
+            setShowRecoveryBanner(true)
+            router.replace('/settings')
+        }
+    }, [searchParams, router])
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -106,6 +115,11 @@ export default function SettingsPage() {
             </div>
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+                {showRecoveryBanner && (
+                    <div className="border border-green-200 bg-green-50 text-green-800 rounded-lg px-4 py-3 text-sm">
+                        Password recovery mode is active. Please update your password below.
+                    </div>
+                )}
 
                 {/* Subscription Card */}
                 <Card className="border-l-4 border-l-green-600 shadow-sm overflow-hidden relative">

@@ -8,12 +8,14 @@ import { usePaywall } from './use-paywall'
 export interface PortfolioItem {
     ticker: string
     name: string
-    type: 'ETF' | 'Stock'
+    type: 'ETF' | 'Stock' | 'Cash'
     allocation: number // For Simulator
     shares?: number    // For Tracker
     avgPrice?: number  // For Tracker
     sector?: string
     expenseRatio?: number
+    currency?: string
+    amount?: number
     // Could add 'shares' and 'avgPrice' later for real tracking
 }
 
@@ -39,9 +41,11 @@ interface PortfolioState {
 
     // Item Actions
     addToPortfolio: (ticker: string, name: string, type?: 'ETF' | 'Stock', extras?: { sector?: string, expenseRatio?: number, shares?: number, avgPrice?: number }) => void
+    addCash: (currency: string, amount: number, portfolioId?: string) => void
     removeFromPortfolio: (ticker: string) => void
     updateAllocation: (ticker: string, allocation: number) => void
     updateHolding: (ticker: string, shares: number, avgPrice: number) => void
+    updateCash: (ticker: string, amount: number) => void
 
     // Getters
     getCurrentPortfolio: () => Portfolio | undefined
@@ -273,6 +277,59 @@ export const usePortfolio = create<PortfolioState>()(
                 }
             },
 
+            addCash: async (currency, amount, portfolioId) => {
+                const targetCurrency = currency.toUpperCase()
+                if (!targetCurrency || targetCurrency.length < 3 || !amount || amount <= 0) return
+
+                const { portfolios, currentPortfolioId, userId } = get()
+                let targetId = portfolioId || currentPortfolioId
+
+                if (!portfolios[targetId] || (userId && portfolios[targetId].ownerId !== userId)) {
+                    const userPortfolios = Object.values(portfolios).filter(p => p.ownerId === userId)
+                    if (userPortfolios.length > 0) {
+                        targetId = userPortfolios[0].id
+                        set({ currentPortfolioId: targetId })
+                    } else {
+                        return
+                    }
+                }
+
+                const current = get().portfolios[targetId]
+                const cashTicker = `CASH-${targetCurrency}`
+                const existingIndex = current.items.findIndex(p => p.ticker === cashTicker && p.type === 'Cash')
+
+                let updatedItems: PortfolioItem[]
+                if (existingIndex >= 0) {
+                    updatedItems = current.items.map((item, idx) => {
+                        if (idx !== existingIndex) return item
+                        const currentAmount = item.amount || 0
+                        return { ...item, amount: currentAmount + amount }
+                    })
+                } else {
+                    const newItem: PortfolioItem = {
+                        ticker: cashTicker,
+                        name: `Cash (${targetCurrency})`,
+                        type: 'Cash',
+                        allocation: 0,
+                        amount,
+                        currency: targetCurrency
+                    }
+                    updatedItems = [...current.items, newItem]
+                }
+
+                const updatedPortfolio = { ...current, items: updatedItems }
+
+                set(state => ({
+                    portfolios: { ...state.portfolios, [targetId]: updatedPortfolio }
+                }))
+                toast.success(`Added Cash (${targetCurrency})`)
+
+                if (userId) {
+                    const supabase = createClient()
+                    await supabase.from('portfolios').update({ items: updatedPortfolio.items, updated_at: new Date() }).eq('id', targetId)
+                }
+            },
+
             removeFromPortfolio: async (ticker) => {
                 const { currentPortfolioId, userId, portfolios } = get()
                 if (!currentPortfolioId) return
@@ -320,6 +377,26 @@ export const usePortfolio = create<PortfolioState>()(
 
                 const current = portfolios[currentPortfolioId]
                 const updatedItems = current.items.map(p => p.ticker === ticker ? { ...p, shares, avgPrice } : p)
+
+                set(state => ({
+                    portfolios: {
+                        ...state.portfolios,
+                        [currentPortfolioId]: { ...current, items: updatedItems }
+                    }
+                }))
+
+                if (userId && current.ownerId === userId) {
+                    const supabase = createClient()
+                    await supabase.from('portfolios').update({ items: updatedItems, updated_at: new Date() }).eq('id', currentPortfolioId)
+                }
+            },
+
+            updateCash: async (ticker, amount) => {
+                const { currentPortfolioId, userId, portfolios } = get()
+                if (!currentPortfolioId) return
+
+                const current = portfolios[currentPortfolioId]
+                const updatedItems = current.items.map(p => p.ticker === ticker ? { ...p, amount: Math.max(0, amount) } : p)
 
                 set(state => ({
                     portfolios: {
