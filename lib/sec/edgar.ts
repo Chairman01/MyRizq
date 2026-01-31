@@ -620,7 +620,7 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
     const nonCompliantPercent = Math.min(100, (safeInterestIncome / totalRevenue) * 100)
     const compliantPercent = Math.max(0, 100 - nonCompliantPercent)
 
-    const segmentTotal = segments.reduce((sum, seg) => sum + (seg.value || 0), 0)
+    let segmentTotal = segments.reduce((sum, seg) => sum + (seg.value || 0), 0)
     const totalForPercent = segmentTotal > 0 ? segmentTotal : totalRevenue
     let segmentsWithPercent = segments.map(seg => ({
         ...seg,
@@ -638,6 +638,26 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
                 compliance: "halal"
             }
         ]
+        segmentTotal = totalRevenue
+    }
+
+    if (ticker.toUpperCase() === "AMZN") {
+        const amznSegments = [
+            { name: "Online stores", value: 247_029_000_000 },
+            { name: "Physical stores", value: 21_215_000_000 },
+            { name: "Third-party seller services", value: 156_146_000_000 },
+            { name: "Advertising services", value: 56_214_000_000 },
+            { name: "Subscription services", value: 44_374_000_000 },
+            { name: "AWS", value: 107_556_000_000 },
+            { name: "Other", value: 5_425_000_000 }
+        ]
+        segmentTotal = amznSegments.reduce((sum, seg) => sum + seg.value, 0)
+        segmentsWithPercent = amznSegments.map(seg => ({
+            ...seg,
+            tag: "10-K table (manual override 2024)",
+            percentOfTotal: segmentTotal > 0 ? Math.round((seg.value / segmentTotal) * 1000) / 10 : undefined,
+            compliance: undefined as "halal" | "haram" | "questionable" | undefined
+        }))
     }
 
     return {

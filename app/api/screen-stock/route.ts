@@ -281,7 +281,7 @@ async function fetchStockData(ticker: string): Promise<StockData | null> {
 }
 
 const SEC_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30
-const SEC_CACHE_VERSION = 10
+const SEC_CACHE_VERSION = 13
 
 function getSupabaseAdmin() {
     return createClient(
@@ -417,6 +417,7 @@ async function calculateScreening(data: StockData) {
                         const lower = name.toLowerCase()
                         if (lower.includes("hedging gains") || lower.includes("hedging") || lower.includes("gains")) return "haram"
                         if (lower.includes("other bets")) return "haram"
+                        if (lower.includes("search & other") || lower.includes("search and other")) return "halal"
                         if (lower.includes("advertising") || lower.includes("ads")) return "questionable"
                     }
                     if (data.ticker.toUpperCase() === "META") {
@@ -449,6 +450,11 @@ async function calculateScreening(data: StockData) {
                         }
                         if (lower === "other") return "questionable"
                         return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "AMZN") {
+                        const lower = name.toLowerCase()
+                        if (lower.includes("subscription services")) return "halal"
+                        if (lower.includes("third-party seller services") || lower.includes("third party seller services")) return "halal"
                     }
                     if (isHaramSegment(name)) return "haram"
                     if (isQuestionableSegment(name)) return "questionable"
