@@ -29,21 +29,32 @@ export const usePaywall = create<PaywallState>()(
 
             checkSubscription: async () => {
                 const supabase = createClient()
-                const { data: { user } } = await supabase.auth.getUser()
+                const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-                if (!user) {
+                if (userError || !user) {
                     set({ isPremium: false, isLoading: false })
                     return
                 }
 
-                const { data: sub } = await supabase
+                const { data: sub, error: subError } = await supabase
                     .from('subscriptions')
-                    .select('status')
+                    .select('status,current_period_end')
                     .eq('user_id', user.id)
                     .in('status', ['active', 'trialing'])
                     .maybeSingle()
 
-                if (sub) {
+                if (subError) {
+                    set({ isPremium: false, isLoading: false })
+                    return
+                }
+
+                const nowMs = Date.now()
+                const hasActive = sub?.status === 'active'
+                const hasValidTrial = sub?.status === 'trialing'
+                    && !!sub?.current_period_end
+                    && Date.parse(sub.current_period_end) > nowMs
+
+                if (hasActive || hasValidTrial) {
                     set({ isPremium: true, isLimitReached: false, isPaywallOpen: false, isLoading: false })
                 } else {
                     set({ isPremium: false, isLoading: false })

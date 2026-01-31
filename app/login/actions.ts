@@ -24,7 +24,10 @@ export async function login(formData: FormData) {
 
 export async function signup(formData: FormData) {
     const supabase = await createClient()
-    const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    const plan = (formData.get('plan') as string) || 'free'
+    const nextPath = plan === 'free' ? '/portfolio' : `/checkout?plan=${encodeURIComponent(plan)}`
 
     const data = {
         email: (formData.get('email') as string).toLowerCase(),
@@ -36,7 +39,9 @@ export async function signup(formData: FormData) {
                 last_name: formData.get('lastName'),
                 country: formData.get('country'),
                 phone: formData.get('phone'),
-            }
+                plan,
+            },
+            emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         }
     }
 
@@ -122,8 +127,10 @@ export async function resendOtp(email: string) {
 
 export async function resetPassword(email: string) {
     const supabase = await createClient()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/settings`,
+        redirectTo: `${siteUrl}/auth/callback?next=/settings`,
     })
 
     if (error) {
