@@ -90,7 +90,7 @@ const SEGMENT_HINTS: Record<string, SegmentHints> = {
     MSFT: {
         tableHintRegex: /(revenue,\s+classified\s+by\s+significant\s+product\s+and\s+service\s+offerings|significant\s+product\s+and\s+service\s+offerings)/i,
         rowLabelRegex: /(server\s+products\s+and\s+cloud\s+services|microsoft\s+365\s+commercial\s+products\s+and\s+cloud\s+services|gaming|linkedin|windows\s+and\s+devices|search\s+and\s+news\s+advertising|dynamics\s+products\s+and\s+cloud\s+services|enterprise\s+and\s+partner\s+services|microsoft\s+365\s+consumer\s+products\s+and\s+cloud\s+services|other)/i,
-        rowExcludeRegex: /(total)/i,
+        rowExcludeRegex: /(total|growth|%)/i,
         maxSegments: 12,
         labelTag: "10-K table (msft revenue by offering)",
         expectedSegments: [
