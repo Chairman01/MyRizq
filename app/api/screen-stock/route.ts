@@ -209,21 +209,27 @@ function calculateScreening(data: StockData) {
     )
 
     // Determine qualitative screening
-    let compliantPercent = 95
-    let questionablePercent = 3
-    let nonCompliantPercent = 2
+    let compliantPercent: number | null = null
+    let questionablePercent: number | null = null
+    let nonCompliantPercent: number | null = null
+    let qualitativeMethod: "segment_based" | "industry_estimate" | "insufficient_data" = "insufficient_data"
+    const revenueDataAvailable = data.totalRevenue > 0
 
     if (isHaramBusiness) {
         compliantPercent = 0
         questionablePercent = 0
         nonCompliantPercent = 100
+        qualitativeMethod = "industry_estimate"
     } else if (sectorLower === "financial services" || sectorLower === "financials") {
         compliantPercent = 10
         questionablePercent = 20
         nonCompliantPercent = 70
+        qualitativeMethod = "industry_estimate"
     }
 
-    const qualitativePassed = nonCompliantPercent < 5 && !isHaramBusiness
+    const qualitativePassed = typeof nonCompliantPercent === "number"
+        ? nonCompliantPercent < 5 && !isHaramBusiness
+        : false
 
     // Build issues list
     const issues: string[] = []
@@ -232,6 +238,9 @@ function calculateScreening(data: StockData) {
     }
     if (isHaramBusiness) {
         issues.push(`Operates in non-compliant industry: ${data.industry}`)
+    }
+    if (!revenueDataAvailable) {
+        issues.push("Revenue data unavailable; qualitative screening requires verified revenue sources")
     }
     if (!debtPassed) {
         issues.push(`Interest-bearing debt ratio (${debtRatio.toFixed(2)}%) exceeds 30% threshold`)
@@ -254,7 +263,9 @@ function calculateScreening(data: StockData) {
         overallStatus = "Non-Compliant"
     } else if (sectorLower === "financial services" || sectorLower === "financials") {
         overallStatus = "Non-Compliant"
-    } else if (questionablePercent > 3) {
+    } else if (qualitativeMethod === "insufficient_data") {
+        overallStatus = "Questionable"
+    } else if (typeof questionablePercent === "number" && questionablePercent > 3) {
         overallStatus = "Questionable"
     } else {
         overallStatus = "Compliant"
@@ -274,7 +285,14 @@ function calculateScreening(data: StockData) {
             compliantPercent,
             questionablePercent,
             nonCompliantPercent,
-            issues
+            issues,
+            revenueDataAvailable,
+            dataSources: {
+                totalRevenue: revenueDataAvailable ? "Yahoo Finance (totalRevenue)" : "Unavailable",
+                segmentRevenue: "Unavailable",
+                interestIncome: "Unavailable"
+            },
+            method: qualitativeMethod
         },
         quantitative: {
             passed: quantitativePassed,
@@ -292,7 +310,8 @@ function calculateScreening(data: StockData) {
             cashAndEquivalents: Math.round(data.cashAndEquivalents),
             deposits: Math.round(data.shortTermInvestments),
             accountsReceivable: Math.round(data.accountsReceivable),
-            totalAssets: Math.round(data.totalAssets)
+            totalAssets: Math.round(data.totalAssets),
+            totalRevenue: Math.round(data.totalRevenue)
         },
         profile: {
             description: data.description,

@@ -51,10 +51,17 @@ export interface ScreeningResult {
     lastUpdated: string
     qualitative: {
         passed: boolean
-        compliantPercent: number
-        questionablePercent: number
-        nonCompliantPercent: number
+        compliantPercent: number | null
+        questionablePercent: number | null
+        nonCompliantPercent: number | null
         issues: string[]
+        revenueDataAvailable?: boolean
+        dataSources?: {
+            totalRevenue: string
+            segmentRevenue: string
+            interestIncome: string
+        }
+        method?: "segment_based" | "industry_estimate" | "insufficient_data"
     }
     quantitative: {
         passed: boolean
@@ -73,6 +80,7 @@ export interface ScreeningResult {
         deposits: number
         accountsReceivable: number
         totalAssets: number
+        totalRevenue?: number
     }
     profile?: {
         description: string

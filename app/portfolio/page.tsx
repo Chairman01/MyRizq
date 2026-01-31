@@ -50,6 +50,8 @@ export default function PortfolioPage() {
     const [isMounted, setIsMounted] = useState(false)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [newPortfolioName, setNewPortfolioName] = useState("")
+    const [apiSuggestions, setApiSuggestions] = useState<{ symbol: string, name: string, type: string }[]>([])
+    const [isSearching, setIsSearching] = useState(false)
 
     // Add to Portfolio Dialog State
     const [isAddToOpen, setIsAddToOpen] = useState(false)
@@ -84,6 +86,39 @@ export default function PortfolioPage() {
 
     // Sorting State
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'mktValue', direction: 'desc' })
+
+    const getFxRateForCurrency = (currency?: string) => {
+        const code = (currency || 'USD').toUpperCase()
+        if (code === 'USD') return 1
+        return fxRates[code]
+    }
+
+    const getItemUsdPrice = (item: any) => {
+        if (item.type === 'Cash') {
+            const rate = getFxRateForCurrency(item.currency)
+            return typeof rate === 'number' ? rate : 1
+        }
+        const data = marketData[item.ticker]
+        if (typeof data?.usdPrice === 'number') return data.usdPrice
+        return data?.price || item.avgPrice || 0
+    }
+
+    const getItemUsdValue = (item: any) => {
+        if (item.type === 'Cash') {
+            const rate = getFxRateForCurrency(item.currency)
+            const amount = item.amount || 0
+            return typeof rate === 'number' ? amount * rate : amount
+        }
+        const price = getItemUsdPrice(item)
+        return (item.shares || 0) * price
+    }
+
+    const getItemUsdCost = (item: any) => {
+        if (item.type === 'Cash') {
+            return getItemUsdValue(item)
+        }
+        return (item.shares || 0) * (item.avgPrice || 0)
+    }
 
     const sortedItems = useMemo(() => {
         let items = [...portfolioItems]
@@ -184,6 +219,31 @@ export default function PortfolioPage() {
         fetchPrices()
     }, [portfolioItems.length])
 
+    useEffect(() => {
+        const searchApi = async () => {
+            if (searchQuery.trim().length < 2) {
+                setApiSuggestions([])
+                return
+            }
+            setIsSearching(true)
+            try {
+                const res = await fetch(`/api/search-stocks?q=${encodeURIComponent(searchQuery.trim())}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setApiSuggestions(data.results || [])
+                } else {
+                    setApiSuggestions([])
+                }
+            } catch (e) {
+                setApiSuggestions([])
+            } finally {
+                setIsSearching(false)
+            }
+        }
+        const timeoutId = setTimeout(searchApi, 300)
+        return () => clearTimeout(timeoutId)
+    }, [searchQuery])
+
     const cashCurrencies = useMemo(() => {
         const set = new Set<string>()
         portfolioItems.forEach(item => {
@@ -217,39 +277,6 @@ export default function PortfolioPage() {
         fetchFxRates()
     }, [cashCurrencies, fxRates])
 
-    const getFxRateForCurrency = (currency?: string) => {
-        const code = (currency || 'USD').toUpperCase()
-        if (code === 'USD') return 1
-        return fxRates[code]
-    }
-
-    const getItemUsdPrice = (item: any) => {
-        if (item.type === 'Cash') {
-            const rate = getFxRateForCurrency(item.currency)
-            return typeof rate === 'number' ? rate : 1
-        }
-        const data = marketData[item.ticker]
-        if (typeof data?.usdPrice === 'number') return data.usdPrice
-        return data?.price || item.avgPrice || 0
-    }
-
-    const getItemUsdValue = (item: any) => {
-        if (item.type === 'Cash') {
-            const rate = getFxRateForCurrency(item.currency)
-            const amount = item.amount || 0
-            return typeof rate === 'number' ? amount * rate : amount
-        }
-        const price = getItemUsdPrice(item)
-        return (item.shares || 0) * price
-    }
-
-    const getItemUsdCost = (item: any) => {
-        if (item.type === 'Cash') {
-            return getItemUsdValue(item)
-        }
-        return (item.shares || 0) * (item.avgPrice || 0)
-    }
-
     // Available Assets - Split logic
     const { stocks, etfs } = useMemo(() => {
         const inPortfolio = new Set(portfolioItems.map(p => p.ticker))
@@ -274,6 +301,20 @@ export default function PortfolioPage() {
             (item.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 item.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
+        if (searchQuery.trim().length >= 2 && apiSuggestions.length > 0) {
+            const normalized = apiSuggestions
+                .map(s => {
+                    const isEtf = s.type?.toUpperCase().includes('ETF') || s.name?.toUpperCase().includes('ETF')
+                    return { ticker: s.symbol, name: s.name, type: isEtf ? 'ETF' : 'Stock' as 'ETF' | 'Stock' }
+                })
+                .filter(item => !inPortfolio.has(item.ticker))
+
+            return {
+                stocks: normalized.filter(i => i.type === 'Stock'),
+                etfs: normalized.filter(i => i.type === 'ETF')
+            }
+        }
+
         const result = {
             stocks: stockList.filter(filter),
             etfs: etfData.map(e => ({ ...e, type: 'ETF' })).filter(filter)
@@ -289,7 +330,7 @@ export default function PortfolioPage() {
         }
 
         return result
-    }, [portfolioItems, searchQuery])
+    }, [portfolioItems, searchQuery, apiSuggestions])
 
     // Calculate Totals
     const totalValue = portfolioItems.reduce((sum: number, item) => sum + getItemUsdValue(item), 0)
@@ -494,6 +535,9 @@ export default function PortfolioPage() {
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 className="mb-2"
                                             />
+                                            {isSearching && (
+                                                <p className="text-xs text-muted-foreground mb-2">Searching...</p>
+                                            )}
                                             <Button
                                                 variant="outline"
                                                 className="w-full justify-start gap-2"
