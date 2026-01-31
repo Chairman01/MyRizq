@@ -15,8 +15,8 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
-  title: 'MyRizq - Helping Muslims Navigate Finance',
-  description: 'Discover, compare, and learn about Shariah-compliant Stocks, ETFs, Sukuks, and more. Your comprehensive resource for halal investing.',
+  title: 'Making finance easy for Muslims',
+  description: 'Making finance easy for Muslims',
   keywords: 'Halal ETF, Shariah compliant investing, Islamic finance, SPUS, HLAL, Muslim investing, ethical ETF, halal stocks',
   icons: {
     icon: '/Favicon/favicon-32x32.png',
@@ -31,8 +31,8 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'MyRizq - Halal ETF Research Platform',
-    description: 'Your trusted source for Shariah-compliant ETF research and Islamic finance education.',
+    title: 'Making finance easy for Muslims',
+    description: 'Making finance easy for Muslims',
     type: 'website',
     url: 'https://myrizq.com',
     siteName: 'MyRizq',
@@ -47,8 +47,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MyRizq - Halal ETF Research Platform',
-    description: 'Your trusted source for Shariah-compliant ETF research and Islamic finance education.',
+    title: 'Making finance easy for Muslims',
+    description: 'Making finance easy for Muslims',
     images: ['https://myrizq.com/myrizq-og.png'],
   },
 }
