@@ -275,12 +275,32 @@ function isRevenueLikeSegmentSet(segments: { name: string; value: number }[]) {
 
 function extractSegmentsFromHtml(html: string, ticker?: string) {
     const tables = html.match(/<table[\s\S]*?<\/table>/gi) || []
-    const totalRegex = /total\s+(net\s+)?sales|total\s+revenue|net\s+sales|total\s+net\s+revenue|total\s+operating\s+income/i
+    const totalRegex = /(^|\s)total\b|total\s+(net\s+)?sales|total\s+revenue|net\s+sales|total\s+net\s+revenue|total\s+operating\s+income/i
     const includeTableRegex = /(disaggregated\s+net\s+sales|net\s+sales\s+by|net\s+revenue|revenue\s+by\s+product|revenue\s+by\s+segment|segment\s+revenue|revenue\s+by\s+source|revenues?\s+by\s+type)/i
     const metaRevenueHintRegex = /(revenue\s+by\s+source|advertising|other\s+revenue|family\s+of\s+apps|reality\s+labs|revenues?\s+by\s+type)/i
     const productHintRegex = /(iphone|ipad|mac|wearables|services|accessories|hardware|software|devices)/i
     const metaHintRegex = /(advertising|other\s+revenue|family\s+of\s+apps|reality\s+labs)/i
     const excludeRegex = /(note|notes|due|debt|liabilities|acceleration|securities|cupertino|california|geographic|legal|lease|item\s+\d|cost\s+of\s+goods|cogs|gross\s+profit|gross\s+margin|operating\s+income)/i
+
+    const getPreferredYearIndex = (rowCells: string[][]) => {
+        let yearIndex: number | null = null
+        let maxYear = 0
+        for (const cells of rowCells) {
+            const years = cells
+                .map((cell, idx) => {
+                    const match = cell.match(/(20\d{2})/)
+                    return match ? { year: Number(match[1]), idx } : null
+                })
+                .filter((value): value is { year: number; idx: number } => !!value)
+            for (const candidate of years) {
+                if (candidate.year > maxYear) {
+                    maxYear = candidate.year
+                    yearIndex = candidate.idx
+                }
+            }
+        }
+        return yearIndex
+    }
 
     const buildSegmentsFromTable = (
         rowCells: string[][],
@@ -288,7 +308,8 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
         rowLabelRegex: RegExp,
         rowExcludeRegex: RegExp | null,
         tag: string,
-        maxSegments: number
+        maxSegments: number,
+        preferredIndex: number | null
     ) => {
         const segments: { name: string; value: number; tag: string }[] = []
         const seen = new Set<string>()
@@ -300,15 +321,24 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
             if (!rowLabelRegex.test(name)) continue
             if (rowExcludeRegex?.test(name)) continue
 
-            const numbers = cells
-                .slice(1)
-                .map(c => c.replace(/[^\d,]/g, ""))
-                .filter(c => c && /\d/.test(c))
-                .map(c => Number(c.replace(/,/g, "")))
-                .filter(n => Number.isFinite(n) && n > 0)
-            if (numbers.length === 0) continue
-
-            const value = numbers[numbers.length - 1]
+            let value: number | null = null
+            if (preferredIndex !== null && preferredIndex >= 1 && preferredIndex < cells.length) {
+                const raw = cells[preferredIndex]?.replace(/[^\d,]/g, "")
+                if (raw && /\d/.test(raw)) {
+                    const parsed = Number(raw.replace(/,/g, ""))
+                    if (Number.isFinite(parsed) && parsed > 0) value = parsed
+                }
+            }
+            if (value === null) {
+                const numbers = cells
+                    .slice(1)
+                    .map(c => c.replace(/[^\d,]/g, ""))
+                    .filter(c => c && /\d/.test(c))
+                    .map(c => Number(c.replace(/,/g, "")))
+                    .filter(n => Number.isFinite(n) && n > 0)
+                if (numbers.length === 0) continue
+                value = numbers[numbers.length - 1]
+            }
             if (seen.has(name)) continue
             seen.add(name)
             const normalizedValue = inMillions ? value * 1_000_000 : value
@@ -332,15 +362,20 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                     .filter(Boolean)
             })
             const inMillions = /in\s+millions/i.test(tableText)
+            const preferredIndex = getPreferredYearIndex(rowCells)
             const segments = buildSegmentsFromTable(
                 rowCells,
                 inMillions,
                 hints.rowLabelRegex,
                 hints.rowExcludeRegex || null,
                 hints.labelTag || "10-K table (ticker hints)",
-                hints.maxSegments || 10
+                hints.maxSegments || 10,
+                preferredIndex
             )
             if (segments.length > 0) {
+                if (hints.expectedSegments && hints.expectedSegments.length >= 2 && segments.length < 2) {
+                    continue
+                }
                 const ordered = orderSegmentsByExpected(segments, hints.expectedSegments)
                 if (!isRevenueLikeSegmentSet(ordered)) return []
                 return ordered
@@ -359,6 +394,7 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                 .filter(Boolean)
         })
         const inMillions = /in\s+millions/i.test(tableText)
+        const preferredIndex = getPreferredYearIndex(rowCells)
 
         if (metaHintRegex.test(tableText)) {
             const segments = buildSegmentsFromTable(
@@ -367,7 +403,8 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                 /(advertising|other\s+revenue|family\s+of\s+apps|reality\s+labs)/i,
                 null,
                 "10-K table (meta revenue by type)",
-                6
+                6,
+                preferredIndex
             )
             if (segments.length > 0 && isRevenueLikeSegmentSet(segments)) return segments
         }
@@ -386,15 +423,24 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
                 if (!name || totalRegex.test(name)) break
                 if (excludeRegex.test(name)) continue
 
-                const numbers = cells
-                    .slice(1)
-                    .map(c => c.replace(/[^\d,]/g, ""))
-                    .filter(c => c && /\d/.test(c))
-                    .map(c => Number(c.replace(/,/g, "")))
-                    .filter(n => Number.isFinite(n) && n > 0)
-                if (numbers.length === 0) continue
-
-                const value = numbers[0]
+                let value: number | null = null
+                if (preferredIndex !== null && preferredIndex >= 1 && preferredIndex < cells.length) {
+                    const raw = cells[preferredIndex]?.replace(/[^\d,]/g, "")
+                    if (raw && /\d/.test(raw)) {
+                        const parsed = Number(raw.replace(/,/g, ""))
+                        if (Number.isFinite(parsed) && parsed > 0) value = parsed
+                    }
+                }
+                if (value === null) {
+                    const numbers = cells
+                        .slice(1)
+                        .map(c => c.replace(/[^\d,]/g, ""))
+                        .filter(c => c && /\d/.test(c))
+                        .map(c => Number(c.replace(/,/g, "")))
+                        .filter(n => Number.isFinite(n) && n > 0)
+                    if (numbers.length === 0) continue
+                    value = numbers[0]
+                }
                 if (seen.has(name)) continue
                 seen.add(name)
                 const normalizedValue = inMillions ? value * 1_000_000 : value
@@ -418,15 +464,24 @@ function extractSegmentsFromHtml(html: string, ticker?: string) {
             if (excludeRegex.test(name)) continue
             if (/^\d{4}$/.test(name)) continue
 
-            const numbers = cells
-                .slice(1)
-                .map(c => c.replace(/[^\d,]/g, ""))
-                .filter(c => c && /\d/.test(c))
-                .map(c => Number(c.replace(/,/g, "")))
-                .filter(n => Number.isFinite(n) && n > 0)
-            if (numbers.length === 0) continue
-
-            const value = numbers[0]
+            let value: number | null = null
+            if (preferredIndex !== null && preferredIndex >= 1 && preferredIndex < cells.length) {
+                const raw = cells[preferredIndex]?.replace(/[^\d,]/g, "")
+                if (raw && /\d/.test(raw)) {
+                    const parsed = Number(raw.replace(/,/g, ""))
+                    if (Number.isFinite(parsed) && parsed > 0) value = parsed
+                }
+            }
+            if (value === null) {
+                const numbers = cells
+                    .slice(1)
+                    .map(c => c.replace(/[^\d,]/g, ""))
+                    .filter(c => c && /\d/.test(c))
+                    .map(c => Number(c.replace(/,/g, "")))
+                    .filter(n => Number.isFinite(n) && n > 0)
+                if (numbers.length === 0) continue
+                value = numbers[0]
+            }
             if (seen.has(name)) continue
             seen.add(name)
             const normalizedValue = inMillions ? value * 1_000_000 : value
