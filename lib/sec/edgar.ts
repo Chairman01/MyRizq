@@ -459,8 +459,9 @@ function extractSegmentsFromText(text: string) {
         if (!match) continue
         const name = match[1].replace(/\s+/g, " ").trim()
         const numbers = line.match(/\d{3,}(?:,\d{3})+/g) || []
-        if (numbers.length === 0) continue
-        const value = Number(numbers[0].replace(/,/g, ""))
+        const firstNumber = numbers[0]
+        if (!firstNumber) continue
+        const value = Number(firstNumber.replace(/,/g, ""))
         if (!name || !Number.isFinite(value)) continue
         if (seen.has(name)) continue
         seen.add(name)
