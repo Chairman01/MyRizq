@@ -495,7 +495,7 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
         interestIncome = 0
     }
 
-    let segments = extractSegmentRevenue(facts?.facts)
+    let segments: { name: string; value: number; tag: string; end?: string }[] = extractSegmentRevenue(facts?.facts)
     let segmentSource = segments.length > 0 ? "SEC XBRL (segment facts)" : "Unavailable (segment tags vary)"
     if (segments.length === 0 && filing?.url) {
         try {
