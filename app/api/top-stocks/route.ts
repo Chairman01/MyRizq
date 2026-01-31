@@ -86,12 +86,14 @@ async function fetchBatch(tickers: string[]) {
             const profile = quoteSummary.summaryProfile
             const summaryDetail = quoteSummary.summaryDetail
             const incomeHistory = quoteSummary.incomeStatementHistory?.incomeStatementHistory
-            const incomeQuarterly = quoteSummary.incomeStatementHistoryQuarterly?.incomeStatementHistory
             const earningsValue = pickFirstNumber(
-                toNumberOrNull(financialData?.netIncomeToCommon),
-                toNumberOrNull(financialData?.netIncome),
                 toNumberOrNull(incomeHistory?.[0]?.netIncome),
-                toNumberOrNull(incomeQuarterly?.[0]?.netIncome)
+                toNumberOrNull(financialData?.netIncomeToCommon),
+                toNumberOrNull(financialData?.netIncome)
+            )
+            const revenueValue = pickFirstNumber(
+                toNumberOrNull(incomeHistory?.[0]?.totalRevenue),
+                toNumberOrNull(financialData?.totalRevenue)
             )
             const financialCurrency = financialData?.financialCurrency || price?.currency || "USD"
             const fxRate = await getFxRate(financialCurrency, "USD")
@@ -103,7 +105,7 @@ async function fetchBatch(tickers: string[]) {
                 price: toNumber(price?.regularMarketPrice) * fxRate,
                 priceCurrency: "USD",
                 country: profile?.country || "N/A",
-                revenue: toNumber(financialData?.totalRevenue) * fxRate,
+                revenue: revenueValue * fxRate,
                 earnings: earningsValue * fxRate,
                 employees: toNumber(profile?.fullTimeEmployees),
                 dividendYield: toNumber(summaryDetail?.dividendYield) * 100
@@ -128,6 +130,7 @@ async function fetchBatch(tickers: string[]) {
 }
 
 const topStocksCache: Record<string, { expiresAt: number; data: any }> = {}
+const TOP_STOCKS_CACHE_VERSION = 2
 
 function getNextUtcMidnight() {
     const now = new Date()
@@ -139,7 +142,7 @@ export async function GET(request: NextRequest) {
     const metric = (request.nextUrl.searchParams.get("metric") || "marketCap") as TopMetric
     const limit = Number(request.nextUrl.searchParams.get("limit") || 25)
 
-    const cacheKey = `${metric}:${limit}`
+    const cacheKey = `${TOP_STOCKS_CACHE_VERSION}:${metric}:${limit}`
     const cached = topStocksCache[cacheKey]
     if (cached && Date.now() < cached.expiresAt) {
         return NextResponse.json(cached.data)
