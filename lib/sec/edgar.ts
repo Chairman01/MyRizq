@@ -543,7 +543,7 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
 
     return {
         totalRevenue,
-        interestIncome,
+        interestIncome: safeInterestIncome,
         nonCompliantPercent,
         compliantPercent,
         questionablePercent: 0,
