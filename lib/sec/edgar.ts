@@ -517,7 +517,8 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
         }
     }
 
-    const nonCompliantPercent = Math.min(100, (interestIncome / totalRevenue) * 100)
+    const safeInterestIncome = typeof interestIncome === "number" ? interestIncome : 0
+    const nonCompliantPercent = Math.min(100, (safeInterestIncome / totalRevenue) * 100)
     const compliantPercent = Math.max(0, 100 - nonCompliantPercent)
 
     const segmentTotal = segments.reduce((sum, seg) => sum + (seg.value || 0), 0)
