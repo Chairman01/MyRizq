@@ -100,8 +100,13 @@ export async function GET(request: NextRequest) {
         ticker: string
         name: string
         marketCap: number
+        price: number
+        priceCurrency: string
+        country: string
         revenue: number
-        change: number
+        earnings: number
+        employees: number
+        dividendYield: number
     }[] = []
 
     for (const batch of batches) {
