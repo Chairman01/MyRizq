@@ -61,6 +61,10 @@ export interface ScreeningResult {
             totalRevenue: string
             segmentRevenue: string
             interestIncome: string
+            xbrlTags?: {
+                totalRevenue: string
+                interestIncome: string
+            }
         }
         xbrlTags?: {
             totalRevenue: string
