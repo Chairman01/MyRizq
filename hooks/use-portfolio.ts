@@ -40,7 +40,7 @@ interface PortfolioState {
     reset: () => void
 
     // Item Actions
-    addToPortfolio: (ticker: string, name: string, type?: 'ETF' | 'Stock', extras?: { sector?: string, expenseRatio?: number, shares?: number, avgPrice?: number }) => void
+    addToPortfolio: (ticker: string, name: string, type?: 'ETF' | 'Stock', extras?: { sector?: string, expenseRatio?: number, shares?: number, avgPrice?: number }, portfolioId?: string) => void
     addCash: (currency: string, amount: number, portfolioId?: string) => void
     removeFromPortfolio: (ticker: string) => void
     updateAllocation: (ticker: string, allocation: number) => void
@@ -210,9 +210,9 @@ export const usePortfolio = create<PortfolioState>()(
 
             selectPortfolio: (id) => set({ currentPortfolioId: id }),
 
-            addToPortfolio: async (ticker, name, type = 'Stock', extras) => {
+            addToPortfolio: async (ticker, name, type = 'Stock', extras, portfolioId) => {
                 const { portfolios, currentPortfolioId, userId, createPortfolio } = get()
-                let targetId = currentPortfolioId
+                let targetId = portfolioId || currentPortfolioId
 
                 if (!portfolios[targetId] || (userId && portfolios[targetId].ownerId !== userId)) {
                     const userPortfolios = Object.values(portfolios).filter(p => p.ownerId === userId)

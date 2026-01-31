@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { MessageSquarePlus, Send, Lightbulb, CheckCircle2 } from "lucide-react"
+import { createClient } from "@/utils/supabase/client"
 
 const existingIdeas = [
     "Portfolio performance tracking over time",
@@ -20,12 +21,31 @@ export default function FeedbackPage() {
     const [email, setEmail] = useState("")
     const [feature, setFeature] = useState("")
     const [details, setDetails] = useState("")
+    const [submitting, setSubmitting] = useState(false)
+    const supabase = createClient()
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // In production, this would send to a backend or email service
-        console.log({ email, feature, details })
-        setSubmitted(true)
+        if (!feature.trim()) return
+        setSubmitting(true)
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            const response = await fetch("/api/feedback/feature-request", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: email.trim() || null,
+                    title: feature.trim(),
+                    details: details.trim() || null,
+                    userId: user?.id || null
+                })
+            })
+            if (response.ok) {
+                setSubmitted(true)
+            }
+        } finally {
+            setSubmitting(false)
+        }
     }
 
     return (
@@ -100,7 +120,7 @@ export default function FeedbackPage() {
                                             className="rounded-lg"
                                         />
                                     </div>
-                                    <Button type="submit" className="w-full rounded-lg bg-green-600 hover:bg-green-700 gap-2">
+                                    <Button type="submit" className="w-full rounded-lg bg-green-600 hover:bg-green-700 gap-2" disabled={submitting}>
                                         <Send className="w-4 h-4" /> Submit Feature Request
                                     </Button>
                                 </form>
@@ -136,8 +156,8 @@ export default function FeedbackPage() {
                     <h3 className="font-semibold text-gray-900 mb-2">Have questions or need help?</h3>
                     <p className="text-gray-600 mb-4">
                         Reach out to us directly at{' '}
-                        <a href="mailto:contact@myrizq.com" className="text-green-600 font-medium hover:underline">
-                            contact@myrizq.com
+                        <a href="mailto:myrizq3@gmail.com" className="text-green-600 font-medium hover:underline">
+                            myrizq3@gmail.com
                         </a>
                     </p>
                 </div>

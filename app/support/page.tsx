@@ -65,7 +65,7 @@ export default function SupportPage() {
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-lg">Feedback & Suggestions</h3>
                                     <p className="text-muted-foreground mb-4">Have ideas for improving MyRizq? We&apos;d love to hear from you!</p>
-                                    <a href="mailto:contact@myrizq.com">
+                                    <a href="mailto:myrizq3@gmail.com">
                                         <Button variant="outline" className="gap-2"><Mail className="w-4 h-4" />Email Us</Button>
                                     </a>
                                 </div>

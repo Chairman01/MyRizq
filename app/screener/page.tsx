@@ -1,14 +1,17 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { Search, CheckCircle2, XCircle, AlertTriangle, Info, ExternalLink, Building, Plus } from "lucide-react"
+import { Search, CheckCircle2, XCircle, AlertTriangle, Info, ExternalLink, Building, Plus, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { screenStock, searchStocks, getAvailableStocks, type ScreeningResult } from "@/lib/stock-data"
+import { Textarea } from "@/components/ui/textarea"
+import { screenStock, searchStocks, getAvailableStocks, stockDatabase, type ScreeningResult } from "@/lib/stock-data"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePaywall } from "@/hooks/use-paywall"
 import { usePortfolio } from "@/hooks/use-portfolio"
+import { createClient } from "@/utils/supabase/client"
 
 function CircularProgress({
     percentage,
@@ -141,12 +144,128 @@ function ScreenerContent() {
     const [showSuggestions, setShowSuggestions] = useState(false)
     const [showQualitativeDetails, setShowQualitativeDetails] = useState(false)
     const [showQuantitativeDetails, setShowQuantitativeDetails] = useState(false)
+    const [showXbrlTags, setShowXbrlTags] = useState(false)
+    const [feedbackChoice, setFeedbackChoice] = useState<"agree" | "disagree" | null>(null)
+    const [feedbackComment, setFeedbackComment] = useState("")
+    const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+    const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
     const [notFound, setNotFound] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
+    const [selectedSector, setSelectedSector] = useState("All")
+    const [sortBy, setSortBy] = useState("marketCap")
+    const [topMetric, setTopMetric] = useState<"marketCap" | "revenue" | "earnings" | "employees" | "dividend">("marketCap")
+    const [topStocks, setTopStocks] = useState<{
+        ticker: string
+        name: string
+        marketCap: number
+        price: number
+        priceCurrency: string
+        country: string
+        revenue: number
+        earnings: number
+        employees: number
+        dividendYield: number
+    }[]>([])
+    const [topLoading, setTopLoading] = useState(false)
+    const [topSort, setTopSort] = useState<{ key: "rank" | "name" | "marketCap" | "price" | "country"; direction: "asc" | "desc" }>({
+        key: "rank",
+        direction: "asc"
+    })
+    const [portfolioSelectOpen, setPortfolioSelectOpen] = useState<string | null>(null)
+
+    const formatCurrency = (value: number, currency: string) => {
+        const formatted = value.toLocaleString()
+        if (currency === "USD") {
+            return `$${formatted}`
+        }
+        return `${currency} ${formatted}`
+    }
 
     // Popular stocks for quick access
     const popularStocks = ["TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AMD", "NFLX", "DIS"]
+    const sectorOptions = Array.from(
+        new Set(Object.values(stockDatabase).map(stock => stock.sector))
+    ).sort()
+    const sortValueFor = (entry: { stock: typeof stockDatabase[string], screening: ScreeningResult | null }) => {
+        if (sortBy === "revenue") {
+            return entry.screening?.rawData?.totalRevenue ?? 0
+        }
+        if (sortBy === "name") {
+            return entry.stock.name.toLowerCase()
+        }
+        if (sortBy === "sector") {
+            return entry.stock.sector.toLowerCase()
+        }
+        return entry.stock.marketCap
+    }
+
+    const discoveryStocks = Object.values(stockDatabase)
+        .map(stock => ({ stock, screening: screenStock(stock.ticker) }))
+        .filter(entry => selectedSector === "All" || entry.stock.sector === selectedSector)
+        .sort((a, b) => {
+            const aValue = sortValueFor(a)
+            const bValue = sortValueFor(b)
+            if (typeof aValue === "string" && typeof bValue === "string") {
+                return aValue.localeCompare(bValue)
+            }
+            return (bValue as number) - (aValue as number)
+        })
+
+    useEffect(() => {
+        if (result || notFound || isLoading) return
+        const fetchTopStocks = async () => {
+            setTopLoading(true)
+            try {
+                const response = await fetch(`/api/top-stocks?metric=${topMetric}&limit=25`)
+                if (response.ok) {
+                    const data = await response.json()
+                    setTopStocks(data.results || [])
+                }
+            } catch (error) {
+                console.error("Top stocks error:", error)
+            } finally {
+                setTopLoading(false)
+            }
+        }
+        fetchTopStocks()
+    }, [topMetric, result, notFound, isLoading])
+
+    const sortedTopStocks = (() => {
+        const { key, direction } = topSort
+        if (key === "rank") {
+            return direction === "asc" ? topStocks : [...topStocks].reverse()
+        }
+        const multiplier = direction === "asc" ? 1 : -1
+        return [...topStocks].sort((a, b) => {
+            if (key === "name") return a.name.localeCompare(b.name) * multiplier
+            if (key === "marketCap") return (a.marketCap - b.marketCap) * multiplier
+            if (key === "price") return (a.price - b.price) * multiplier
+            if (key === "country") return a.country.localeCompare(b.country) * multiplier
+            return 0
+        })
+    })()
+
+    const handleTopSort = (key: "rank" | "name" | "marketCap" | "price" | "country") => {
+        setTopSort(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+        }))
+    }
+
+    const resetSearch = () => {
+        setResult(null)
+        setNotFound(false)
+        setShowQualitativeDetails(false)
+        setShowQuantitativeDetails(false)
+        setShowXbrlTags(false)
+        setFeedbackChoice(null)
+        setFeedbackComment("")
+        setFeedbackSubmitted(false)
+        setShowSuggestions(false)
+        setSuggestions([])
+        setSearchQuery("")
+    }
 
     // Handle Initial URL Query
     useEffect(() => {
@@ -157,7 +276,7 @@ function ScreenerContent() {
 
     // Debounced search from Yahoo Finance
     useEffect(() => {
-        if (isLoading || result) {
+        if (isLoading) {
             setShowSuggestions(false)
             return
         }
@@ -187,10 +306,11 @@ function ScreenerContent() {
             setSuggestions([])
             setShowSuggestions(false)
         }
-    }, [searchQuery, isLoading, result])
+    }, [searchQuery, isLoading])
 
     const { incrementSearch, isLimitReached, setPaywallOpen } = usePaywall()
-    const { addToPortfolio } = usePortfolio()
+    const { addToPortfolio, getAllPortfolios } = usePortfolio()
+    const supabase = createClient()
 
     const handleSearch = async (ticker: string) => {
         if (isLimitReached) {
@@ -207,6 +327,10 @@ function ScreenerContent() {
         setResult(null)
         setShowQualitativeDetails(false)
         setShowQuantitativeDetails(false)
+        setShowXbrlTags(false)
+        setFeedbackChoice(null)
+        setFeedbackComment("")
+        setFeedbackSubmitted(false)
 
         try {
             // First try the API for real-time data
@@ -245,6 +369,31 @@ function ScreenerContent() {
         }
     }
 
+    const submitFeedback = async () => {
+        if (!result || !feedbackChoice) return
+        setFeedbackSubmitting(true)
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            const res = await fetch("/api/feedback/screener", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ticker: result.ticker,
+                    overallStatus: result.overallStatus,
+                    qualitativeMethod: result.qualitative.method,
+                    agree: feedbackChoice === "agree",
+                    comment: feedbackComment.trim() || null,
+                    userId: user?.id || null
+                })
+            })
+            if (res.ok) {
+                setFeedbackSubmitted(true)
+            }
+        } finally {
+            setFeedbackSubmitting(false)
+        }
+    }
+
     const availableStocks = getAvailableStocks()
 
     return (
@@ -264,28 +413,46 @@ function ScreenerContent() {
                 </div>
 
                 {/* Search Box */}
-                <div className="max-w-xl mx-auto mb-8 relative">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                        <Input
-                            type="text"
-                            placeholder="Search by ticker (e.g., TSLA, AAPL, MSFT)"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
-                            onBlur={() => setShowSuggestions(false)}
-                            className="pl-10 pr-4 py-6 text-lg"
-                        />
-                        <Button
-                            onClick={() => handleSearch(searchQuery)}
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                        >
-                            Screen
-                        </Button>
+                <div className="max-w-xl mx-auto mb-8 relative sticky top-4 z-30">
+                    <div className="flex items-center gap-2">
+                        {result && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-2 shrink-0"
+                                onClick={resetSearch}
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                Back
+                            </Button>
+                        )}
+                        <div className="relative w-full">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                            <Input
+                                type="text"
+                                placeholder="Search by ticker (e.g., TSLA, AAPL, MSFT)"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
+                                onBlur={() => setShowSuggestions(false)}
+                                onFocus={() => {
+                                    if (suggestions.length > 0) setShowSuggestions(true)
+                                }}
+                                className="pl-10 pr-4 py-6 text-lg w-full"
+                            />
+                            <Button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => handleSearch(searchQuery)}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                            >
+                                Screen
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Suggestions Dropdown */}
-                    {showSuggestions && !isLoading && !result && suggestions.length > 0 && (
+                    {showSuggestions && !isLoading && suggestions.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-80 overflow-y-auto">
                             {isSearching && (
                                 <div className="px-4 py-2 text-sm text-muted-foreground">
@@ -295,6 +462,8 @@ function ScreenerContent() {
                             {suggestions.map((stock) => (
                                 <button
                                     key={stock.symbol}
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => handleSearch(stock.symbol)}
                                     className="w-full px-4 py-3 text-left hover:bg-muted flex items-center justify-between first:rounded-t-lg last:rounded-b-lg border-b border-border last:border-0"
                                 >
@@ -344,6 +513,140 @@ function ScreenerContent() {
                     </div>
                 )}
 
+                {!result && !notFound && !isLoading && (
+                    <div className="mb-12">
+                        <div className="space-y-6">
+                            <Card className="border-border">
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle>Top 25 stocks</CardTitle>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Top companies based on the selected metric.
+                                    </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Button
+                                            variant={topMetric === "marketCap" ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setTopMetric("marketCap")}
+                                        >
+                                            Market cap
+                                        </Button>
+                                        <Button
+                                            variant={topMetric === "earnings" ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setTopMetric("earnings")}
+                                        >
+                                            Earnings
+                                        </Button>
+                                        <Button
+                                            variant={topMetric === "revenue" ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setTopMetric("revenue")}
+                                        >
+                                            Revenue
+                                        </Button>
+                                        <Button
+                                            variant={topMetric === "employees" ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setTopMetric("employees")}
+                                        >
+                                            Employees
+                                        </Button>
+                                        <Button
+                                            variant={topMetric === "dividend" ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setTopMetric("dividend")}
+                                        >
+                                            Dividend %
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    {topLoading && topStocks.length === 0 && (
+                                        <p className="text-sm text-muted-foreground">Loading top stocks...</p>
+                                    )}
+                                    {topLoading && topStocks.length > 0 && (
+                                        <p className="text-xs text-muted-foreground">Refreshing daily...</p>
+                                    )}
+                                    {!topLoading && topStocks.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground px-3 gap-2">
+                                                <button type="button" className="col-span-1 text-left flex items-center gap-1" onClick={() => handleTopSort("rank")}>
+                                                    Rank
+                                                    {topSort.key === "rank" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
+                                                </button>
+                                                <button type="button" className="col-span-3 text-left flex items-center gap-1" onClick={() => handleTopSort("name")}>
+                                                    Name
+                                                    {topSort.key === "name" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
+                                                </button>
+                                                <button type="button" className="col-span-3 text-right flex items-center justify-end gap-1" onClick={() => handleTopSort("marketCap")}>
+                                                    Market Cap
+                                                    {topSort.key === "marketCap" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
+                                                </button>
+                                                <button type="button" className="col-span-2 text-right flex items-center justify-end gap-1" onClick={() => handleTopSort("price")}>
+                                                    Price
+                                                    {topSort.key === "price" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
+                                                </button>
+                                                <button type="button" className="col-span-2 text-right flex items-center justify-end gap-1" onClick={() => handleTopSort("country")}>
+                                                    Country
+                                                    {topSort.key === "country" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
+                                                </button>
+                                                <div className="col-span-1 text-right">Add</div>
+                                            </div>
+                                            {sortedTopStocks.map((stock, index) => (
+                                                <div
+                                                    key={`${stock.ticker}-${index}`}
+                                                    className="relative w-full grid grid-cols-12 items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 text-left hover:bg-muted"
+                                                    onClick={() => handleSearch(stock.ticker)}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                >
+                                                    <div className="col-span-1 text-sm font-semibold">{index + 1}</div>
+                                                    <div className="col-span-3">
+                                                        <p className="font-semibold">{stock.ticker}</p>
+                                                        <p className="text-sm text-muted-foreground">{stock.name}</p>
+                                                    </div>
+                                                    <div className="col-span-3 text-right text-sm font-medium">
+                                                        ${Math.round(stock.marketCap / 1_000_000).toLocaleString()}M
+                                                    </div>
+                                                    <div className="col-span-2 text-right text-sm font-medium">
+                                                        {stock.priceCurrency === "USD" ? "$" : `${stock.priceCurrency} `}
+                                                        {stock.price.toFixed(2)}
+                                                    </div>
+                                                    <div className="col-span-2 text-right text-sm pr-2">{stock.country}</div>
+                                                    <div className="col-span-1 flex justify-end">
+                                                        <Select
+                                                            open={portfolioSelectOpen === stock.ticker}
+                                                            onOpenChange={(open) => setPortfolioSelectOpen(open ? stock.ticker : null)}
+                                                            onValueChange={(value) => {
+                                                                addToPortfolio(stock.ticker, stock.name, "Stock", {}, value)
+                                                                setPortfolioSelectOpen(null)
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-8 w-10 px-0 justify-center bg-background">
+                                                                <Plus className="w-4 h-4" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {getAllPortfolios().map(portfolio => (
+                                                                    <SelectItem key={portfolio.id} value={portfolio.id}>
+                                                                        {portfolio.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                        </div>
+                    </div>
+                )}
+
                 {/* Not Found */}
                 {notFound && (
                     <Card className="max-w-xl mx-auto">
@@ -373,7 +676,7 @@ function ScreenerContent() {
                 {result && (
                     <div className="space-y-6">
                         {/* Status Header */}
-                        <Card className={`overflow-hidden ${result.overallStatus === "Compliant"
+                        <Card className={`overflow-hidden sticky top-4 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 ${result.overallStatus === "Compliant"
                             ? "border-green-500 bg-gradient-to-r from-green-500/10 to-transparent"
                             : result.overallStatus === "Questionable"
                                 ? "border-yellow-500 bg-gradient-to-r from-yellow-500/10 to-transparent"
@@ -510,9 +813,7 @@ function ScreenerContent() {
 
                                     {/* Description */}
                                     <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                                        {result.profile.description.length > 800
-                                            ? result.profile.description.substring(0, 800) + "..."
-                                            : result.profile.description}
+                                        {result.profile.description}
                                     </p>
 
                                     {/* Quick Stats */}
@@ -572,6 +873,9 @@ function ScreenerContent() {
                                     )}
                                     {result.qualitative.method === "industry_estimate" && (
                                         <Badge variant="outline" className="text-xs">Estimate</Badge>
+                                    )}
+                                    {result.qualitative.method === "segment_based" && result.secFiling && (
+                                        <Badge variant="outline" className="text-xs">SEC 10-K</Badge>
                                     )}
                                     {(() => {
                                         const status = result.qualitative.method === "insufficient_data"
@@ -663,10 +967,12 @@ function ScreenerContent() {
                                             <div className="p-4 bg-background rounded-lg border border-border">
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div>
-                                                        <p className="text-sm text-muted-foreground">Total Revenue (USD, in millions)</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            Total Revenue (in millions {result.financialCurrency || result.profile?.currency || "USD"})
+                                                        </p>
                                                         <p className="font-medium">
                                                             {typeof result.rawData.totalRevenue === "number"
-                                                                ? `$${result.rawData.totalRevenue.toLocaleString()}M`
+                                                                ? `${formatCurrency(result.rawData.totalRevenue, result.financialCurrency || result.profile?.currency || "USD")}M`
                                                                 : "N/A"}
                                                         </p>
                                                     </div>
@@ -677,9 +983,79 @@ function ScreenerContent() {
                                                         </p>
                                                     </div>
                                                 </div>
+                                                {result.secFiling && (
+                                                    <div className="mt-3 text-sm">
+                                                        <span className="text-muted-foreground">SEC Filing:</span>{" "}
+                                                        <a
+                                                            href={result.secFiling.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary hover:underline"
+                                                        >
+                                                            Filing {result.secFiling.filedAt} <ExternalLink className="inline w-3 h-3" />
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                <div className="mt-4">
+                                                    <p className="text-sm font-medium text-foreground mb-2">Segment Revenue (best-effort)</p>
+                                                    {result.qualitative.segmentBreakdown && result.qualitative.segmentBreakdown.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {result.qualitative.segmentBreakdown.map((segment, idx) => (
+                                                                <div key={`${segment.name}-${idx}`} className="flex items-center justify-between text-xs text-muted-foreground">
+                                                                    <span className="truncate max-w-[55%]">{segment.name}</span>
+                                                                    <span className="flex items-center gap-2 font-mono">
+                                                                        <span>
+                                                                            ${Math.round(segment.value / 1_000_000).toLocaleString()}M
+                                                                            {typeof segment.percentOfTotal === "number" && (
+                                                                                <span className="ml-2 text-[11px] text-muted-foreground">
+                                                                                    ({segment.percentOfTotal.toFixed(1)}%)
+                                                                                </span>
+                                                                            )}
+                                                                        </span>
+                                                                        {segment.compliance && (
+                                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                                                                segment.compliance === "haram"
+                                                                                    ? "bg-red-100 text-red-700"
+                                                                                    : segment.compliance === "questionable"
+                                                                                        ? "bg-yellow-100 text-yellow-700"
+                                                                                        : "bg-green-100 text-green-700"
+                                                                            }`}>
+                                                                                {segment.compliance}
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                            {result.rawData.totalRevenue && (
+                                                                <div className="mt-2 pt-2 border-t text-[11px] text-muted-foreground">
+                                                                    Total revenue: ${result.rawData.totalRevenue.toLocaleString()}M
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground">Segment revenue not available in SEC XBRL.</p>
+                                                    )}
+                                                </div>
+                                                {result.qualitative.dataSources?.xbrlTags && (
+                                                    <div className="mt-3">
+                                                        <button
+                                                            type="button"
+                                                            className="text-xs text-primary hover:underline"
+                                                            onClick={() => setShowXbrlTags(!showXbrlTags)}
+                                                        >
+                                                            {showXbrlTags ? "Hide XBRL tags used" : "Show XBRL tags used"}
+                                                        </button>
+                                                        {showXbrlTags && (
+                                                            <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                                                                <div>Total revenue tag: {result.qualitative.dataSources.xbrlTags.totalRevenue}</div>
+                                                                <div>Interest income tag: {result.qualitative.dataSources.xbrlTags.interestIncome}</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 <p className="text-xs text-muted-foreground mt-3">
-                                                    Segment-level revenue and interest income are not always available via public APIs.
-                                                    Use official company filings for confirmation.
+                                                    We try our best to provide the most accurate results possible. Please use this as a source of information.
+                                                    May Allah make it easy for us!
                                                 </p>
                                             </div>
 
@@ -729,6 +1105,54 @@ function ScreenerContent() {
                                         </div>
                                     )}
                                 </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Feedback */}
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle>Do you agree with this screening?</CardTitle>
+                                {feedbackSubmitted && (
+                                    <Badge className="bg-green-500">Thanks!</Badge>
+                                )}
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        type="button"
+                                        variant={feedbackChoice === "agree" ? "default" : "outline"}
+                                        onClick={() => setFeedbackChoice("agree")}
+                                        disabled={feedbackSubmitted}
+                                    >
+                                        Agree
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={feedbackChoice === "disagree" ? "destructive" : "outline"}
+                                        onClick={() => setFeedbackChoice("disagree")}
+                                        disabled={feedbackSubmitted}
+                                    >
+                                        Disagree
+                                    </Button>
+                                </div>
+                                {feedbackChoice && !feedbackSubmitted && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm text-muted-foreground">Optional comment</label>
+                                        <Textarea
+                                            placeholder="Tell us why you agree or disagree..."
+                                            value={feedbackComment}
+                                            onChange={(e) => setFeedbackComment(e.target.value)}
+                                            rows={3}
+                                        />
+                                        <Button
+                                            type="button"
+                                            onClick={submitFeedback}
+                                            disabled={feedbackSubmitting}
+                                        >
+                                            {feedbackSubmitting ? "Submitting..." : "Submit Feedback"}
+                                        </Button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -784,25 +1208,33 @@ function ScreenerContent() {
                                         <div className="mt-4 space-y-4">
                                             {/* Raw Financial Data */}
                                             <div className="p-4 bg-background rounded-lg border border-border">
-                                                <h4 className="font-semibold mb-4">Financial Data (in millions USD)</h4>
+                                                <h4 className="font-semibold mb-4">
+                                                    Financial Data (in millions {result.financialCurrency || result.profile?.currency || "USD"})
+                                                </h4>
                                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                                     <div className="p-3 bg-muted/50 rounded-lg">
                                                         <p className="text-xs text-muted-foreground">Market Cap</p>
-                                                        <p className="font-bold text-lg">${(result.rawData.marketCap).toLocaleString()}M</p>
+                                                        <p className="font-bold text-lg">
+                                                            {formatCurrency(result.rawData.marketCap, result.financialCurrency || result.profile?.currency || "USD")}M
+                                                        </p>
                                                     </div>
                                                     <div className="p-3 bg-muted/50 rounded-lg">
                                                         <p className="text-xs text-muted-foreground">Total Debt</p>
-                                                        <p className="font-bold text-lg">${(result.rawData.totalDebt).toLocaleString()}M</p>
+                                                        <p className="font-bold text-lg">
+                                                            {formatCurrency(result.rawData.totalDebt, result.financialCurrency || result.profile?.currency || "USD")}M
+                                                        </p>
                                                     </div>
                                                     <div className="p-3 bg-muted/50 rounded-lg">
                                                         <p className="text-xs text-muted-foreground">Cash & Equivalents</p>
-                                                        <p className="font-bold text-lg">${(result.rawData.cashAndEquivalents).toLocaleString()}M</p>
+                                                        <p className="font-bold text-lg">
+                                                            {formatCurrency(result.rawData.cashAndEquivalents, result.financialCurrency || result.profile?.currency || "USD")}M
+                                                        </p>
                                                     </div>
                                                     <div className="p-3 bg-muted/50 rounded-lg">
                                                         <p className="text-xs text-muted-foreground">Deposits</p>
                                                         <p className="font-bold text-lg">
                                                             {result.rawData.deposits > 0
-                                                                ? `$${result.rawData.deposits.toLocaleString()}M`
+                                                                ? `${formatCurrency(result.rawData.deposits, result.financialCurrency || result.profile?.currency || "USD")}M`
                                                                 : <span className="text-muted-foreground text-sm">N/A</span>}
                                                         </p>
                                                     </div>
@@ -810,13 +1242,15 @@ function ScreenerContent() {
                                                         <p className="text-xs text-muted-foreground">Accounts Receivable</p>
                                                         <p className="font-bold text-lg">
                                                             {result.rawData.accountsReceivable > 0
-                                                                ? `$${result.rawData.accountsReceivable.toLocaleString()}M`
+                                                                ? `${formatCurrency(result.rawData.accountsReceivable, result.financialCurrency || result.profile?.currency || "USD")}M`
                                                                 : <span className="text-muted-foreground text-sm">N/A</span>}
                                                         </p>
                                                     </div>
                                                     <div className="p-3 bg-muted/50 rounded-lg">
                                                         <p className="text-xs text-muted-foreground">Total Assets</p>
-                                                        <p className="font-bold text-lg">${(result.rawData.totalAssets).toLocaleString()}M</p>
+                                                        <p className="font-bold text-lg">
+                                                            {formatCurrency(result.rawData.totalAssets, result.financialCurrency || result.profile?.currency || "USD")}M
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -834,7 +1268,7 @@ function ScreenerContent() {
                                                             </span>
                                                         </div>
                                                         <p className="text-sm text-muted-foreground font-mono">
-                                                            = Total Debt / Market Cap = ${result.rawData.totalDebt.toLocaleString()}M / ${result.rawData.marketCap.toLocaleString()}M
+                                                            = Total Debt / Market Cap = {formatCurrency(result.rawData.totalDebt, result.financialCurrency || result.profile?.currency || "USD")}M / {formatCurrency(result.rawData.marketCap, result.financialCurrency || result.profile?.currency || "USD")}M
                                                         </p>
                                                         <p className="text-xs mt-1 text-muted-foreground">
                                                             {result.quantitative.debtPassed ? "✓ Passes (below 30% threshold)" : "✗ Fails (exceeds 30% threshold)"}
@@ -850,7 +1284,7 @@ function ScreenerContent() {
                                                             </span>
                                                         </div>
                                                         <p className="text-sm text-muted-foreground font-mono">
-                                                            = (Cash + Deposits) / Market Cap = (${result.rawData.cashAndEquivalents.toLocaleString()}M + ${result.rawData.deposits.toLocaleString()}M) / ${result.rawData.marketCap.toLocaleString()}M
+                                                            = (Cash + Deposits) / Market Cap = ({formatCurrency(result.rawData.cashAndEquivalents, result.financialCurrency || result.profile?.currency || "USD")}M + {formatCurrency(result.rawData.deposits, result.financialCurrency || result.profile?.currency || "USD")}M) / {formatCurrency(result.rawData.marketCap, result.financialCurrency || result.profile?.currency || "USD")}M
                                                         </p>
                                                         <p className="text-xs mt-1 text-muted-foreground">
                                                             {result.quantitative.securitiesPassed ? "✓ Passes (below 30% threshold)" : "✗ Fails (exceeds 30% threshold)"}
@@ -868,7 +1302,7 @@ function ScreenerContent() {
                                                             </span>
                                                         </div>
                                                         <p className="text-sm text-muted-foreground font-mono">
-                                                            = (Cash + Receivables) / Total Assets = (${result.rawData.cashAndEquivalents.toLocaleString()}M + {result.rawData.accountsReceivable > 0 ? `$${result.rawData.accountsReceivable.toLocaleString()}M` : 'N/A'}) / ${result.rawData.totalAssets.toLocaleString()}M
+                                                            = (Cash + Receivables) / Total Assets = ({formatCurrency(result.rawData.cashAndEquivalents, result.financialCurrency || result.profile?.currency || "USD")}M + {result.rawData.accountsReceivable > 0 ? `${formatCurrency(result.rawData.accountsReceivable, result.financialCurrency || result.profile?.currency || "USD")}M` : "N/A"}) / {formatCurrency(result.rawData.totalAssets, result.financialCurrency || result.profile?.currency || "USD")}M
                                                         </p>
                                                         <p className="text-xs mt-1 text-muted-foreground">
                                                             {result.quantitative.liquidityRatio !== null

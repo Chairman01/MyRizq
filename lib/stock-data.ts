@@ -49,6 +49,7 @@ export interface ScreeningResult {
     isBDSListed: boolean
     businessActivities: string[]
     lastUpdated: string
+    financialCurrency?: string
     qualitative: {
         passed: boolean
         compliantPercent: number | null
@@ -61,6 +62,19 @@ export interface ScreeningResult {
             segmentRevenue: string
             interestIncome: string
         }
+        xbrlTags?: {
+            totalRevenue: string
+            interestIncome: string
+        }
+        segmentBreakdown?: {
+            name: string
+            value: number
+            tag: string
+            end?: string
+            percentOfTotal?: number
+            compliance?: "halal" | "haram" | "questionable"
+        }[]
+        segmentTotal?: number
         method?: "segment_based" | "industry_estimate" | "insufficient_data"
     }
     quantitative: {
@@ -90,6 +104,12 @@ export interface ScreeningResult {
         employees: number
         exchange: string
         currency: string
+    }
+    secFiling?: {
+        url: string
+        filedAt: string
+        accession: string
+        primaryDocument: string
     }
     industry?: string
     overallStatus: "Compliant" | "Questionable" | "Non-Compliant"

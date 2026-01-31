@@ -93,7 +93,7 @@ export function Footer() {
                         © {new Date().getFullYear()} MyRizq. Built for ethical investors seeking Shariah-compliant investments.
                     </p>
                     <div className="flex items-center gap-4">
-                        <a href="mailto:contact@myrizq.com" className="text-muted-foreground hover:text-primary transition-colors" title="Email">
+                        <a href="mailto:myrizq3@gmail.com" className="text-muted-foreground hover:text-primary transition-colors" title="Email">
                             <Mail className="w-5 h-5" />
                         </a>
                         <a href="https://www.instagram.com/myrizqapp/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-pink-500 transition-colors" title="Instagram">
