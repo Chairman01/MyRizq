@@ -359,6 +359,7 @@ async function calculateScreening(data: StockData) {
         xbrlTags: undefined as { totalRevenue: string; interestIncome: string } | undefined
     }
 
+    const issues: string[] = []
     let secQualitative: any = null
     let secError = false
     let secErrorMessage: string | null = null
@@ -515,8 +516,6 @@ async function calculateScreening(data: StockData) {
         && (typeof questionablePercent === "number" ? questionablePercent < 5 : true)
         : false
 
-    // Build issues list
-    const issues: string[] = []
     if (secError) {
         issues.push("SEC data unavailable; qualitative screening uses sector-based estimates")
     }
