@@ -44,14 +44,14 @@ export function ETFCard({ etf, onClick }: ETFCardProps) {
           </Badge>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <p className="text-xs text-muted-foreground">Expense Ratio</p>
-            <p className="text-lg font-semibold">{etf.expenseRatio.toFixed(2)}%</p>
+            <p className="text-base sm:text-lg font-semibold">{etf.expenseRatio.toFixed(2)}%</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">AUM</p>
-            <p className="text-lg font-semibold">{etf.aum}</p>
+            <p className="text-base sm:text-lg font-semibold">{etf.aum}</p>
           </div>
         </div>
 

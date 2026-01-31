@@ -17,7 +17,7 @@ export function Footer() {
                                 alt="MyRizq"
                                 width={120}
                                 height={35}
-                                className="h-8 w-auto"
+                                className="h-7 sm:h-8 w-auto"
                             />
                         </Link>
                         <p className="text-sm text-muted-foreground">
@@ -92,7 +92,7 @@ export function Footer() {
                     <p className="text-sm text-muted-foreground text-center md:text-left">
                         © {new Date().getFullYear()} MyRizq. Built for ethical investors seeking Shariah-compliant investments.
                     </p>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                         <a href="mailto:myrizq3@gmail.com" className="text-muted-foreground hover:text-primary transition-colors" title="Email">
                             <Mail className="w-5 h-5" />
                         </a>

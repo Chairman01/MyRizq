@@ -622,7 +622,52 @@ function ScreenerContent() {
                                     )}
                                     {!topLoading && topStocks.length > 0 && (
                                         <div className="space-y-2">
-                                            <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground px-3 gap-2">
+                                            <div className="md:hidden space-y-2">
+                                                {sortedTopStocks.map((stock, index) => (
+                                                    <div
+                                                        key={`${stock.ticker}-${index}`}
+                                                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
+                                                        onClick={() => handleSearch(stock.ticker)}
+                                                        role="button"
+                                                        tabIndex={0}
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <div className="text-xs text-muted-foreground">#{index + 1}</div>
+                                                            <div className="font-semibold">{stock.ticker}</div>
+                                                            <div className="text-xs text-muted-foreground truncate">{stock.name}</div>
+                                                            <div className="mt-2 text-xs text-muted-foreground">
+                                                                {metricLabelMap[topMetric]}: <span className="text-foreground">{formatMetricValue(stock)}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-right text-xs text-muted-foreground">
+                                                                <div>{stock.priceCurrency === "USD" ? "$" : `${stock.priceCurrency} `}{stock.price.toFixed(2)}</div>
+                                                                <div>{stock.country}</div>
+                                                            </div>
+                                                            <Select
+                                                                open={portfolioSelectOpen === stock.ticker}
+                                                                onOpenChange={(open) => setPortfolioSelectOpen(open ? stock.ticker : null)}
+                                                                onValueChange={(value) => {
+                                                                    addToPortfolio(stock.ticker, stock.name, "Stock", {}, value)
+                                                                    setPortfolioSelectOpen(null)
+                                                                }}
+                                                            >
+                                                                <SelectTrigger className="h-8 w-10 px-0 justify-center bg-background">
+                                                                    <Plus className="w-4 h-4" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {getAllPortfolios().map(portfolio => (
+                                                                        <SelectItem key={portfolio.id} value={portfolio.id}>
+                                                                            {portfolio.name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="hidden md:grid grid-cols-12 text-xs font-semibold text-muted-foreground px-3 gap-2">
                                                 <button type="button" className="col-span-1 text-left flex items-center gap-1" onClick={() => handleTopSort("rank")}>
                                                     Rank
                                                     {topSort.key === "rank" ? (topSort.direction === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
@@ -645,6 +690,7 @@ function ScreenerContent() {
                                                 </button>
                                                 <div className="col-span-1 text-right">Add</div>
                                             </div>
+                                            <div className="hidden md:block">
                                             {sortedTopStocks.map((stock, index) => (
                                                 <div
                                                     key={`${stock.ticker}-${index}`}
@@ -689,6 +735,7 @@ function ScreenerContent() {
                                                     </div>
                                                 </div>
                                             ))}
+                                            </div>
                                         </div>
                                     )}
                                 </CardContent>
@@ -910,15 +957,15 @@ function ScreenerContent() {
 
                         {/* Qualitative Screening */}
                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div className="flex items-center gap-3">
+                            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex flex-wrap items-center gap-3">
                                     <CardTitle>Qualitative Screening</CardTitle>
                                     <div className="flex items-center text-sm text-muted-foreground">
                                         <Info className="w-4 h-4 mr-1" />
                                         Revenue Analysis
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     {result.qualitative.method === "insufficient_data" && (
                                         <Badge variant="outline" className="text-xs">Needs Filings</Badge>
                                     )}
@@ -943,7 +990,7 @@ function ScreenerContent() {
                             </CardHeader>
                             <CardContent>
                                 <div className="bg-muted/50 rounded-lg p-6">
-                                    <div className="grid grid-cols-3 gap-8">
+                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8">
                                         <CircularProgress
                                             percentage={result.qualitative.compliantPercent}
                                             color="text-green-500"

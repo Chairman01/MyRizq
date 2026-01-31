@@ -520,10 +520,10 @@ export default function PortfolioPage() {
                     </div>
 
                     <TabsContent value="holdings" className="space-y-4">
-                        <div className="grid lg:grid-cols-12 gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
                             {/* Left: Add Assets - Made smaller (3/12 = 25%) */}
                             <div className="lg:col-span-3 space-y-4">
-                                <Card className="sticky top-4 h-[calc(100vh-12rem)] overflow-hidden flex flex-col">
+                                <Card className="lg:sticky lg:top-4 lg:h-[calc(100vh-12rem)] h-auto overflow-hidden flex flex-col">
                                     <CardHeader className="pb-3 border-b">
                                         <CardTitle className="text-lg flex items-center gap-2"><Plus className="w-5 h-5" /> Add to {isAllSelected ? 'Portfolio' : activePortfolio?.name}</CardTitle>
                                     </CardHeader>
@@ -618,8 +618,64 @@ export default function PortfolioPage() {
                                                 <p className="text-muted-foreground max-w-sm mx-auto">Use the tab on the left to add Stocks and ETFs.</p>
                                             </div>
                                         ) : (
-                                            <div className="overflow-x-auto">
-                                                <div className="min-w-[900px] divide-y divide-gray-100">
+                                            <>
+                                                <div className="md:hidden divide-y divide-gray-100">
+                                                    {sortedItems.map((item, index) => {
+                                                        const itemPrice = getItemUsdPrice(item)
+                                                        const itemValue = getItemUsdValue(item)
+                                                        const itemCost = getItemUsdCost(item)
+                                                        const itemGain = itemValue - itemCost
+                                                        const itemGainPct = itemCost > 0 ? (itemGain / itemCost) * 100 : 0
+                                                        const isCash = item.type === 'Cash'
+                                                        let isCompliant = false
+                                                        if (isCash) {
+                                                            isCompliant = true
+                                                        } else {
+                                                            const checkRes = checkCompliance(item.ticker, item.type)
+                                                            isCompliant = checkRes
+                                                        }
+                                                        return (
+                                                            <div key={`${item.ticker}-${index}`} className="p-4 space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="min-w-0">
+                                                                        {isCash ? (
+                                                                            <>
+                                                                                <div className="font-bold text-gray-900">Cash</div>
+                                                                                <div className="text-xs text-muted-foreground">{item.currency || 'USD'}</div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <Link href={`/screener?q=${item.ticker}`} className="hover:underline font-bold text-gray-900">
+                                                                                    {item.ticker}
+                                                                                </Link>
+                                                                                <div className="text-xs text-muted-foreground truncate">{item.name}</div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-1 ${isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                                                        {isCash ? 'Cash' : (isCompliant ? 'Shariah' : 'Non‑Shariah')}
+                                                                    </Badge>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                                                    <div>Shares/Amount</div>
+                                                                    <div className="text-right text-gray-900">
+                                                                        {isCash ? (item.amount || 0).toLocaleString() : (item.shares || 0).toLocaleString()}
+                                                                    </div>
+                                                                    <div>Market Price (USD)</div>
+                                                                    <div className="text-right text-gray-900">${itemPrice.toFixed(2)}</div>
+                                                                    <div>Market Value (USD)</div>
+                                                                    <div className="text-right text-gray-900">${itemValue.toFixed(2)}</div>
+                                                                    <div>Gain/Loss</div>
+                                                                    <div className={`text-right ${itemGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                        {itemGain >= 0 ? '+' : ''}{itemGain.toFixed(2)} ({itemGainPct.toFixed(2)}%)
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                                <div className="hidden md:block overflow-x-auto">
+                                                    <div className="min-w-[900px] divide-y divide-gray-100">
                                                     {/* Table Header */}
                                                     <div className={`grid gap-2 text-[10px] md:text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-gray-50/50 px-3 py-3 rounded-t-lg items-center ${isAllSelected ? 'grid-cols-[1.5fr_0.8fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]' : 'grid-cols-[2fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]'}`}>
                                                         <div className="cursor-pointer hover:text-gray-900 flex items-center gap-1" onClick={() => requestSort('ticker')}>

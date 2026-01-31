@@ -19,13 +19,33 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold">Top 10 Holdings</h3>
         <p className="text-sm text-muted-foreground">
           Top 10 represents {totalWeight.toFixed(1)}% of portfolio
         </p>
       </div>
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="space-y-3 md:hidden">
+        {holdings.map((holding, index) => (
+          <div key={holding.ticker} className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-muted-foreground">#{index + 1}</div>
+                <div className="font-semibold text-primary">{holding.ticker}</div>
+                <div className="text-xs text-muted-foreground">{holding.name}</div>
+              </div>
+              <div className="text-right font-medium">{holding.weight.toFixed(2)}%</div>
+            </div>
+            <div className="mt-3 w-full bg-muted rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(holding.weight * 5, 100)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden md:block rounded-lg border border-border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">

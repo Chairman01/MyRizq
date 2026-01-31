@@ -33,7 +33,7 @@ export function Navigation() {
   return (
     <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -41,7 +41,7 @@ export function Navigation() {
               alt="MyRizq"
               width={220}
               height={64}
-              className="h-16 w-auto"
+              className="h-10 sm:h-12 lg:h-16 w-auto"
               priority
             />
           </Link>

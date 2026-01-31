@@ -328,14 +328,14 @@ export function DashboardHome() {
                         <p className="text-muted-foreground">Welcome back to your financial overview.</p>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                         {/* Portfolio Selector */}
                         <div className="bg-white p-1 rounded-lg border shadow-sm">
                             <Select
                                 value={currentPortfolioId}
                                 onValueChange={(val) => selectPortfolio(val)}
                             >
-                                <SelectTrigger className="w-[200px] border-none shadow-none focus:ring-0">
+                            <SelectTrigger className="w-full sm:w-[200px] border-none shadow-none focus:ring-0">
                                     <SelectValue placeholder="Select Portfolio" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -361,9 +361,9 @@ export function DashboardHome() {
                 </div>
 
                 {/* Top Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
                     {/* Value Card - Spans 2 cols */}
-                    <Card className="border-0 shadow-sm bg-gradient-to-br from-green-600 to-green-700 text-white col-span-2">
+                    <Card className="border-0 shadow-sm bg-gradient-to-br from-green-600 to-green-700 text-white col-span-1 md:col-span-2">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium opacity-90 flex items-center justify-between">
                                 {currentPortfolio?.name || 'Total Portfolio'} Value
@@ -371,7 +371,7 @@ export function DashboardHome() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div className="text-2xl sm:text-3xl font-bold">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             <div className="flex flex-col gap-1 mt-1 text-sm opacity-90">
                                 <div className="flex items-center gap-2">
                                     {totalGain >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
@@ -424,7 +424,7 @@ export function DashboardHome() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-gray-900">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                            <div className="text-2xl sm:text-3xl font-bold text-gray-900">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                             <div className="text-sm text-gray-500 mt-1">Invested Capital</div>
                         </CardContent>
                     </Card>
