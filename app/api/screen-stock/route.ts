@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { getSecQualitativeForTicker } from "@/lib/sec/edgar"
+import { getSegmentHints } from "@/lib/sec/segment-hints"
 
 // Helper function to create Yahoo Finance instance
 async function getYahooFinance() {
@@ -35,9 +36,17 @@ async function getFxRate(fromCurrency: string, toCurrency: string) {
 // BDS Boycott List
 const bdsBoycottList = [
     "SBUX", "MCD", "KO", "PEP", "NSRGY", "PZZA", "DPZ",
-    "HPQ", "HPE", "INTC",
+    "HPQ", "HPE", "INTC", "DELL", "TEVA", "RMAX",
     "CAT", "LMT", "RTX", "BA", "GD", "NOC",
-    "AXP", "DIS"
+    "AXP", "DIS",
+    // Priority / pressure targets
+    "CVX", "MSFT", "GOOGL", "GOOG", "AMZN", "EXPE", "ABNB", "BKNG", "CSCO",
+    // International tickers
+    "CA.PA", "AXA.PA", "SIEGY", "SIE.DE", "ITX.MC",
+    // Food/restaurant brands
+    "YUM", "QSR",
+    // Consumer/tech
+    "WIX"
 ]
 
 // Haram business keywords
@@ -272,7 +281,7 @@ async function fetchStockData(ticker: string): Promise<StockData | null> {
 }
 
 const SEC_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30
-const SEC_CACHE_VERSION = 2
+const SEC_CACHE_VERSION = 5
 
 function getSupabaseAdmin() {
     return createClient(
@@ -294,6 +303,13 @@ async function getSecCache(ticker: string) {
         const updatedAt = Date.parse(data.updated_at)
         if (!Number.isFinite(updatedAt)) return null
         if (Date.now() - updatedAt > SEC_CACHE_TTL_MS) return null
+        if (
+            getSegmentHints(ticker) &&
+            Array.isArray(data.payload?.segments) &&
+            data.payload.segments.length === 0
+        ) {
+            return null
+        }
         return data.payload
     } catch {
         return null
@@ -353,7 +369,7 @@ async function calculateScreening(data: StockData) {
     let qualitativeMethod: "segment_based" | "industry_estimate" | "insufficient_data" = "insufficient_data"
     let secFiling: { url: string; filedAt: string; accession: string; primaryDocument: string } | null = null
     let qualitativeSources = {
-        totalRevenue: revenueDataAvailable ? "Yahoo Finance (totalRevenue)" : "Unavailable",
+        totalRevenue: revenueDataAvailable ? "Financial data (totalRevenue)" : "Unavailable",
         segmentRevenue: revenueDataAvailable ? "Unavailable (requires filings)" : "Unavailable",
         interestIncome: revenueDataAvailable ? "Unavailable (requires filings)" : "Unavailable",
         xbrlTags: undefined as { totalRevenue: string; interestIncome: string } | undefined
@@ -520,7 +536,7 @@ async function calculateScreening(data: StockData) {
         issues.push("SEC data unavailable; qualitative screening uses sector-based estimates")
     }
     if (data.isBDSListed) {
-        issues.push("Listed on BDS Boycott List - supports Israeli occupation")
+        issues.push("Listed on BDS Boycott List - boycott status makes this stock questionable")
     }
     if (isHaramBusiness) {
         issues.push(`Operates in non-compliant industry: ${data.industry}`)
@@ -547,7 +563,7 @@ async function calculateScreening(data: StockData) {
     if (!quantitativePassed) {
         overallStatus = "Non-Compliant"
     } else if (data.isBDSListed) {
-        overallStatus = "Non-Compliant"
+        overallStatus = "Questionable"
     } else if (isHaramBusiness) {
         overallStatus = "Non-Compliant"
     } else if (sectorLower === "financial services" || sectorLower === "financials") {
