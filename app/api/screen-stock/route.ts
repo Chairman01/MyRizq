@@ -281,7 +281,7 @@ async function fetchStockData(ticker: string): Promise<StockData | null> {
 }
 
 const SEC_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30
-const SEC_CACHE_VERSION = 5
+const SEC_CACHE_VERSION = 6
 
 function getSupabaseAdmin() {
     return createClient(
