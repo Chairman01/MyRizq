@@ -16,7 +16,7 @@ function CircularProgress({
     label,
     size = 120
 }: {
-    percentage: number
+    percentage: number | null
     color: string
     label: string
     size?: number
@@ -24,7 +24,8 @@ function CircularProgress({
     const strokeWidth = 8
     const radius = (size - strokeWidth) / 2
     const circumference = radius * 2 * Math.PI
-    const offset = circumference - (percentage / 100) * circumference
+    const normalized = typeof percentage === "number" ? percentage : 0
+    const offset = circumference - (normalized / 100) * circumference
 
     return (
         <div className="flex flex-col items-center">
@@ -40,7 +41,7 @@ function CircularProgress({
                         cy={size / 2}
                     />
                     <circle
-                        className={color}
+                        className={typeof percentage === "number" ? color : "text-muted"}
                         strokeWidth={strokeWidth}
                         strokeDasharray={circumference}
                         strokeDashoffset={offset}
@@ -53,7 +54,9 @@ function CircularProgress({
                     />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-2xl font-bold">{percentage.toFixed(0)}%</span>
+                    <span className="text-2xl font-bold">
+                        {typeof percentage === "number" ? `${percentage.toFixed(0)}%` : "N/A"}
+                    </span>
                 </div>
             </div>
             <span className="mt-2 text-sm text-muted-foreground uppercase tracking-wide">{label}</span>
@@ -154,6 +157,10 @@ function ScreenerContent() {
 
     // Debounced search from Yahoo Finance
     useEffect(() => {
+        if (isLoading || result) {
+            setShowSuggestions(false)
+            return
+        }
         if (searchQuery.length >= 2 && searchQuery !== initialQuery) { // Update condition to avoid double triggers
             setIsSearching(true)
             const timeoutId = setTimeout(async () => {
@@ -180,7 +187,7 @@ function ScreenerContent() {
             setSuggestions([])
             setShowSuggestions(false)
         }
-    }, [searchQuery])
+    }, [searchQuery, isLoading, result])
 
     const { incrementSearch, isLimitReached, setPaywallOpen } = usePaywall()
     const { addToPortfolio } = usePortfolio()
@@ -193,6 +200,7 @@ function ScreenerContent() {
         incrementSearch()
 
         setShowSuggestions(false)
+        setSuggestions([])
         setSearchQuery(ticker.toUpperCase())
         setIsLoading(true)
         setNotFound(false)
@@ -208,12 +216,16 @@ function ScreenerContent() {
                 const data = await response.json()
                 setResult(data)
                 setNotFound(false)
+                setShowSuggestions(false)
+                setSuggestions([])
             } else {
                 // Fall back to local data if API fails
                 const localResult = screenStock(ticker)
                 if (localResult) {
                     setResult(localResult)
                     setNotFound(false)
+                    setShowSuggestions(false)
+                    setSuggestions([])
                 } else {
                     setNotFound(true)
                 }
@@ -261,6 +273,7 @@ function ScreenerContent() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
+                            onBlur={() => setShowSuggestions(false)}
                             className="pl-10 pr-4 py-6 text-lg"
                         />
                         <Button
@@ -272,7 +285,7 @@ function ScreenerContent() {
                     </div>
 
                     {/* Suggestions Dropdown */}
-                    {showSuggestions && suggestions.length > 0 && (
+                    {showSuggestions && !isLoading && !result && suggestions.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-80 overflow-y-auto">
                             {isSearching && (
                                 <div className="px-4 py-2 text-sm text-muted-foreground">
@@ -440,6 +453,40 @@ function ScreenerContent() {
                             </CardContent>
                         </Card>
 
+                        {/* How We Screen */}
+                        <Card className="border border-emerald-200/60 bg-emerald-50/30">
+                            <CardHeader>
+                                <CardTitle>How We Screen (AAOIFI)</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 text-sm text-muted-foreground">
+                                <p>
+                                    We apply AAOIFI-inspired Shariah screening rules using publicly available data.
+                                </p>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="p-4 bg-white/80 rounded-lg border border-emerald-200/40">
+                                        <p className="font-medium text-foreground mb-2">Quantitative</p>
+                                        <ul className="space-y-1">
+                                            <li>Interest-bearing debt ratio &lt; 30%</li>
+                                            <li>Interest-bearing securities ratio &lt; 30%</li>
+                                            <li>Liquidity ratio &lt; 30%</li>
+                                        </ul>
+                                    </div>
+                                    <div className="p-4 bg-white/80 rounded-lg border border-emerald-200/40">
+                                        <p className="font-medium text-foreground mb-2">Qualitative</p>
+                                        <ul className="space-y-1">
+                                            <li>Non-compliant revenue + interest income &lt; 5%</li>
+                                            <li>Business activities must be Halal</li>
+                                            <li>BDS list exclusion (if applicable)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <p className="text-xs">
+                                    Revenue segment breakdowns are not always available from public APIs.
+                                    For verified revenue sources, please consult official filings (10-K/Annual Report).
+                                </p>
+                            </CardContent>
+                        </Card>
+
                         {/* Company Profile Section */}
                         {result.profile && result.profile.description && (
                             <Card>
@@ -519,9 +566,25 @@ function ScreenerContent() {
                                         Revenue Analysis
                                     </div>
                                 </div>
-                                <Badge className={result.qualitative.passed ? "bg-green-500" : "bg-red-500"}>
-                                    {result.qualitative.passed ? "Pass" : "Fail"}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                    {result.qualitative.method === "insufficient_data" && (
+                                        <Badge variant="outline" className="text-xs">Needs Filings</Badge>
+                                    )}
+                                    {result.qualitative.method === "industry_estimate" && (
+                                        <Badge variant="outline" className="text-xs">Estimate</Badge>
+                                    )}
+                                    {(() => {
+                                        const status = result.qualitative.method === "insufficient_data"
+                                            ? "Pending"
+                                            : (result.qualitative.passed ? "Pass" : "Fail")
+                                        const className = status === "Pass"
+                                            ? "bg-green-500"
+                                            : status === "Fail"
+                                                ? "bg-red-500"
+                                                : "bg-gray-500"
+                                        return <Badge className={className}>{status}</Badge>
+                                    })()}
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 <div className="bg-muted/50 rounded-lg p-6">
@@ -550,6 +613,12 @@ function ScreenerContent() {
                                         if the cumulative revenue from non-compliant activities and non-operating interest income
                                         does not exceed 5% of their total income.
                                     </p>
+                                    {result.qualitative.method === "insufficient_data" && (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            We could not retrieve segment revenue or interest income from public APIs.
+                                            Qualitative screening requires verified revenue sources (e.g. 10‑K/Annual Report).
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* View Detailed Results Button */}
@@ -588,6 +657,30 @@ function ScreenerContent() {
                                                         <p className="font-medium">{result.lastUpdated}</p>
                                                     </div>
                                                 </div>
+                                            </div>
+
+                                            {/* Revenue Data */}
+                                            <div className="p-4 bg-background rounded-lg border border-border">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-sm text-muted-foreground">Total Revenue (USD, in millions)</p>
+                                                        <p className="font-medium">
+                                                            {typeof result.rawData.totalRevenue === "number"
+                                                                ? `$${result.rawData.totalRevenue.toLocaleString()}M`
+                                                                : "N/A"}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm text-muted-foreground">Revenue Data Source</p>
+                                                        <p className="font-medium">
+                                                            {result.qualitative.dataSources?.totalRevenue || "Unavailable"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-3">
+                                                    Segment-level revenue and interest income are not always available via public APIs.
+                                                    Use official company filings for confirmation.
+                                                </p>
                                             </div>
 
                                             {/* Compliance Explanation */}
