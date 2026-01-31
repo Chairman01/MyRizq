@@ -525,7 +525,8 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
     const totalForPercent = segmentTotal > 0 ? segmentTotal : totalRevenue
     let segmentsWithPercent = segments.map(seg => ({
         ...seg,
-        percentOfTotal: totalForPercent > 0 ? Math.round((seg.value / totalForPercent) * 1000) / 10 : undefined
+        percentOfTotal: totalForPercent > 0 ? Math.round((seg.value / totalForPercent) * 1000) / 10 : undefined,
+        compliance: undefined as "halal" | "haram" | "questionable" | undefined
     }))
 
     if (ticker.toUpperCase() === "BBY" && segmentsWithPercent.length > 0) {
