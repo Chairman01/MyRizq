@@ -660,6 +660,22 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
         }))
     }
 
+    if (ticker.toUpperCase() === "DIS") {
+        const disSegments = [
+            { name: "Entertainment", value: 42_466_000_000 },
+            { name: "Sports", value: 17_672_000_000 },
+            { name: "Experiences", value: 36_156_000_000 },
+            { name: "Eliminations", value: -1_869_000_000 }
+        ]
+        segmentTotal = disSegments.reduce((sum, seg) => sum + seg.value, 0)
+        segmentsWithPercent = disSegments.map(seg => ({
+            ...seg,
+            tag: "10-K table (manual override 2025)",
+            percentOfTotal: segmentTotal !== 0 ? Math.round((seg.value / segmentTotal) * 1000) / 10 : undefined,
+            compliance: undefined as "halal" | "haram" | "questionable" | undefined
+        }))
+    }
+
     return {
         totalRevenue,
         interestIncome: safeInterestIncome,

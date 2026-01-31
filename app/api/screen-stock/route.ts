@@ -281,7 +281,7 @@ async function fetchStockData(ticker: string): Promise<StockData | null> {
 }
 
 const SEC_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30
-const SEC_CACHE_VERSION = 13
+const SEC_CACHE_VERSION = 14
 
 function getSupabaseAdmin() {
     return createClient(
@@ -455,6 +455,13 @@ async function calculateScreening(data: StockData) {
                         const lower = name.toLowerCase()
                         if (lower.includes("subscription services")) return "halal"
                         if (lower.includes("third-party seller services") || lower.includes("third party seller services")) return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "DIS") {
+                        const lower = name.toLowerCase()
+                        if (lower.includes("entertainment")) return "questionable"
+                        if (lower.includes("sports")) return "halal"
+                        if (lower.includes("experiences")) return "halal"
+                        if (lower.includes("eliminations")) return "halal"
                     }
                     if (isHaramSegment(name)) return "haram"
                     if (isQuestionableSegment(name)) return "questionable"
