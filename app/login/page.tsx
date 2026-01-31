@@ -133,30 +133,9 @@ export default function LoginPage() {
         }
 
         startTransition(async () => {
-            // Try client-side verification directly
-            const email = verifyEmail.toLowerCase()
-
-            // Try 'email' first (Standard Login Code)
-            let { error } = await supabase.auth.verifyOtp({
-                email,
-                token: otpCode,
-                type: 'email'
-            })
-
-            // If that fails, try 'signup' (Just in case unverified)
-            if (error) {
-                console.log("Client email verify failed, trying signup type...")
-                const res2 = await supabase.auth.verifyOtp({
-                    email,
-                    token: otpCode,
-                    type: 'signup'
-                })
-                if (!res2.error) error = null
-                else error = res2.error
-            }
-
-            if (error) {
-                toast.error("Invalid Code: " + error.message)
+            const result = await verifyOtp(verifyEmail, otpCode)
+            if (result?.error) {
+                toast.error("Invalid Code: " + result.error)
             } else {
                 // Success!
                 // Refresh router to update server components with new session
