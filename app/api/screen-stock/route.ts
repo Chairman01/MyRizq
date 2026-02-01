@@ -420,6 +420,16 @@ async function calculateScreening(data: StockData) {
                 { name: "Net Sales", value: 269912000000 },
                 { name: "Membership Fees", value: 5323000000 }
             ]
+        },
+        "XOM": {
+            year: "2024",
+            totalRevenue: 35052000000, // $35.05B (segment earnings excl. corporate)
+            segments: [
+                { name: "Upstream (Oil & Gas Production)", value: 25390000000 },
+                { name: "Energy Products (Refining & Fuel)", value: 4033000000 },
+                { name: "Specialty Products", value: 3052000000 },
+                { name: "Chemical Products", value: 2577000000 }
+            ]
         }
     }
 
@@ -590,6 +600,10 @@ async function calculateScreening(data: StockData) {
                     }
                     if (data.ticker.toUpperCase() === "COST") {
                         // Costco - wholesale retail and membership fees - all halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "XOM") {
+                        // Exxon Mobil - oil & gas, refining, chemicals, specialty products - all halal
                         return "halal"
                     }
                     if (isHaramSegment(name)) return "haram"
