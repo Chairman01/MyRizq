@@ -26,7 +26,7 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [user, setUser] = useState<any>(null)
-    const { isPremium, setPaywallOpen } = usePaywall()
+    const { isPremium, setPaywallOpen, isLoading: isPlanLoading, checkSubscription } = usePaywall()
 
     // Form State
     const [firstName, setFirstName] = useState("")
@@ -56,6 +56,10 @@ export default function SettingsPage() {
         }
         getUser()
     }, [router])
+
+    useEffect(() => {
+        checkSubscription()
+    }, [checkSubscription])
 
     useEffect(() => {
         if (searchParams.get('recovery') === '1') {
@@ -133,8 +137,15 @@ export default function SettingsPage() {
                                 </CardTitle>
                                 <CardDescription>Your subscription status and billing cycle.</CardDescription>
                             </div>
-                            <Badge variant={isPremium ? "default" : "outline"} className={isPremium ? "bg-green-600" : "bg-gray-100 text-gray-600 border-gray-300"}>
-                                {isPremium ? "Premium Member" : "Free Plan"}
+                            <Badge
+                                variant={isPlanLoading ? "outline" : (isPremium ? "default" : "outline")}
+                                className={
+                                    isPlanLoading
+                                        ? "bg-gray-100 text-gray-600 border-gray-300"
+                                        : (isPremium ? "bg-green-600" : "bg-gray-100 text-gray-600 border-gray-300")
+                                }
+                            >
+                                {isPlanLoading ? "Checking Plan..." : (isPremium ? "Premium Member" : "Free Plan")}
                             </Badge>
                         </div>
                     </CardHeader>
@@ -142,16 +153,23 @@ export default function SettingsPage() {
                         <div className="flex flex-col sm:flex-row gap-6 items-center border p-4 rounded-lg bg-gray-50/50">
                             <div className="flex-1 space-y-1">
                                 <h4 className="font-semibold text-sm">
-                                    {isPremium ? "You have full access" : "Upgrade to unlock full access"}
+                                    {isPlanLoading ? "Checking subscription..." : (isPremium ? "You have full access" : "Upgrade to unlock full access")}
                                 </h4>
                                 <p className="text-xs text-muted-foreground">
-                                    {isPremium
-                                        ? "Enjoy unlimited screenings, portfolios, and deep-dive analytics."
-                                        : "You are currently on the limited Free tier. Upgrade to remove limits."
+                                    {isPlanLoading
+                                        ? "Please wait while we confirm your plan status."
+                                        : (isPremium
+                                            ? "Enjoy unlimited screenings, portfolios, and deep-dive analytics."
+                                            : "You are currently on the limited Free tier. Upgrade to remove limits."
+                                        )
                                     }
                                 </p>
                             </div>
-                            {isPremium ? (
+                            {isPlanLoading ? (
+                                <Button size="sm" variant="outline" disabled className="shrink-0 h-8 text-xs">
+                                    Checking...
+                                </Button>
+                            ) : isPremium ? (
                                 <Button size="sm" variant="outline" onClick={async () => {
                                     try {
                                         toast.loading("Redirecting to billing portal...")

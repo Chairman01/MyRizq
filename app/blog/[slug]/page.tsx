@@ -2,12 +2,36 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { getBlogPost, categoryLabels } from "@/lib/blog-data"
+import { getBlogPost, categoryLabels, type BlogPost } from "@/lib/blog-data"
+import { createClient } from "@/utils/supabase/server"
 import { ArrowLeft, Clock, User } from "lucide-react"
+
+async function fetchDbPost(slug: string): Promise<BlogPost & { content?: string } | null> {
+    const supabase = await createClient()
+    const { data } = await supabase
+        .from("blog_posts")
+        .select("slug,title,excerpt,category,author,date,read_time,featured,content,image_url")
+        .eq("slug", slug)
+        .maybeSingle()
+    if (!data) return null
+    return {
+        slug: data.slug,
+        title: data.title,
+        excerpt: data.excerpt,
+        category: data.category,
+        author: data.author,
+        date: data.date,
+        readTime: data.read_time,
+        featured: data.featured,
+        content: data.content || "",
+        imageUrl: data.image_url || undefined
+    }
+}
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params
-    const post = getBlogPost(slug)
+    const dbPost = await fetchDbPost(slug)
+    const post = dbPost || getBlogPost(slug)
 
     if (!post) notFound()
 
@@ -28,16 +52,24 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                             <span>{post.date}</span>
                         </div>
                     </header>
+                    {post.imageUrl && (
+                        <div className="w-full overflow-hidden rounded-xl border bg-muted/40">
+                            <img src={post.imageUrl} alt={post.title} className="w-full h-auto object-cover" />
+                        </div>
+                    )}
 
                     <div className="prose prose-lg max-w-none">
                         <p className="lead text-xl text-muted-foreground">{post.excerpt}</p>
-
-                        <div className="mt-8 p-6 bg-muted/50 rounded-lg border">
-                            <p className="text-sm text-muted-foreground">
-                                <strong>Note:</strong> This is a placeholder article. Full content for &quot;{post.title}&quot; is coming soon.
-                                Check back for detailed information about this topic.
-                            </p>
-                        </div>
+                        {dbPost?.content ? (
+                            <div dangerouslySetInnerHTML={{ __html: dbPost.content }} />
+                        ) : (
+                            <div className="mt-8 p-6 bg-muted/50 rounded-lg border">
+                                <p className="text-sm text-muted-foreground">
+                                    <strong>Note:</strong> This is a placeholder article. Full content for &quot;{post.title}&quot; is coming soon.
+                                    Check back for detailed information about this topic.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </article>
 

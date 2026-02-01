@@ -138,7 +138,7 @@ export function PricingModal() {
                         <div className="flex items-start gap-2">
                             <Heart className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
                             <p className="text-xs text-gray-500 leading-relaxed">
-                                We want to make Halal investing accessible to everyone. If the price is too high for you right now, please <a href="mailto:support@myrizq.com" className="underline text-green-600 hover:text-green-700">email us</a> and we will get you access at a price that works for you. InshaAllah we want to build more tools and features for you.
+                                We want to make Halal investing accessible to everyone. If the price is too high for you right now, please <a href="mailto:myrizq3@gmail.com" className="underline text-green-600 hover:text-green-700">email us</a> and we will get you access at a price that works for you. InshaAllah we want to build more tools and features for you.
                             </p>
                         </div>
                     </div>
@@ -150,6 +150,14 @@ export function PricingModal() {
                         className="w-full bg-green-600 hover:bg-green-700 h-11 text-base"
                     >
                         {selectedPlan === 'free' ? 'Create Free Account' : 'Start 7-Day Free Trial'}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full h-10 text-sm text-muted-foreground"
+                        onClick={() => setPaywallOpen(false)}
+                    >
+                        Not now
                     </Button>
                     <div className="text-center">
                         <Link href="/login" className="text-xs text-gray-400 hover:text-gray-900 underline">

@@ -153,6 +153,7 @@ function ScreenerContent() {
     const [notFound, setNotFound] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
+    const [pinStatusHeader, setPinStatusHeader] = useState(true)
     const [selectedSector, setSelectedSector] = useState("All")
     const [sortBy, setSortBy] = useState("marketCap")
     const [topMetric, setTopMetric] = useState<"marketCap" | "revenue" | "earnings" | "employees" | "dividend">("marketCap")
@@ -774,7 +775,7 @@ function ScreenerContent() {
                 {result && (
                     <div className="space-y-6">
                         {/* Status Header */}
-                        <Card className={`overflow-hidden sticky top-4 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 ${result.overallStatus === "Compliant"
+                        <Card className={`overflow-hidden ${pinStatusHeader ? "md:sticky md:top-4 md:z-20" : ""} bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 ${result.overallStatus === "Compliant"
                             ? "border-green-500 bg-gradient-to-r from-green-500/10 to-transparent"
                             : result.overallStatus === "Questionable"
                                 ? "border-yellow-500 bg-gradient-to-r from-yellow-500/10 to-transparent"
@@ -824,6 +825,15 @@ function ScreenerContent() {
                                                 onClick={() => addToPortfolio(result.ticker, result.name, 'Stock', { sector: result.sector })}
                                             >
                                                 <Plus className="w-4 h-4" /> Save to Portfolio
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-xs"
+                                                onClick={() => setPinStatusHeader(prev => !prev)}
+                                            >
+                                                {pinStatusHeader ? "Unpin header" : "Pin header"}
                                             </Button>
                                         </div>
                                     </div>
@@ -976,15 +986,16 @@ function ScreenerContent() {
                                         <Badge variant="outline" className="text-xs">SEC 10-K</Badge>
                                     )}
                                     {(() => {
-                                        const status = result.qualitative.method === "insufficient_data"
-                                            ? "Pending"
-                                            : (result.qualitative.passed ? "Pass" : "Fail")
-                                        const className = status === "Pass"
-                                            ? "bg-green-500"
-                                            : status === "Fail"
-                                                ? "bg-red-500"
-                                                : "bg-gray-500"
-                                        return <Badge className={className}>{status}</Badge>
+                                        if (result.qualitative.method === "insufficient_data") {
+                                            return <Badge className="bg-gray-500">Pending</Badge>
+                                        }
+                                        if (result.overallStatus === "Compliant") {
+                                            return <Badge className="bg-green-500">Pass</Badge>
+                                        }
+                                        if (result.overallStatus === "Questionable") {
+                                            return <Badge className="bg-yellow-500">Questionable</Badge>
+                                        }
+                                        return <Badge className="bg-red-500">Fail</Badge>
                                     })()}
                                 </div>
                             </CardHeader>

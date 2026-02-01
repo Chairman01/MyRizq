@@ -9,6 +9,7 @@ import { PricingModal } from "@/components/paywall/pricing-modal"
 import { SubscriptionChecker } from "@/components/paywall/subscription-checker"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { createClient } from "@/utils/supabase/server"
+import { headers } from "next/headers"
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -60,11 +61,16 @@ export default async function RootLayout({
 }>) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const headerStore = await headers()
+  const pathname = headerStore.get("x-pathname") || ""
+  const isAdminRoute = pathname.startsWith("/admin")
 
   return (
     <html lang="en">
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased min-h-screen flex flex-col`}>
-        {user ? (
+        {isAdminRoute ? (
+          <main className="flex-1">{children}</main>
+        ) : user ? (
           <DashboardLayout user={user}>
             {children}
           </DashboardLayout>
@@ -79,8 +85,8 @@ export default async function RootLayout({
         )}
         <Analytics />
         <Toaster />
-        <SubscriptionChecker />
-        <PricingModal />
+        {!isAdminRoute && <SubscriptionChecker />}
+        {!isAdminRoute && <PricingModal />}
       </body>
     </html>
   )

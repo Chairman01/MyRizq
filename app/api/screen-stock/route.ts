@@ -281,13 +281,28 @@ async function fetchStockData(ticker: string): Promise<StockData | null> {
 }
 
 const SEC_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30
-const SEC_CACHE_VERSION = 14
+const SEC_CACHE_VERSION = 19
 
 function getSupabaseAdmin() {
     return createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
+}
+
+async function getQualitativeOverride(ticker: string) {
+    try {
+        const supabase = getSupabaseAdmin()
+        const { data } = await supabase
+            .from("qualitative_overrides")
+            .select("segments,total_revenue,year,source,notes,locked")
+            .eq("ticker", ticker.toUpperCase())
+            .maybeSingle()
+        if (!data || !data.locked) return null
+        return data
+    } catch {
+        return null
+    }
 }
 
 async function getSecCache(ticker: string) {
@@ -376,12 +391,79 @@ async function calculateScreening(data: StockData) {
     }
 
     const issues: string[] = []
+    // Hardcoded segment overrides for specific tickers (manual research)
+    const MANUAL_SEGMENT_OVERRIDES: Record<string, { segments: { name: string; value: number }[]; totalRevenue: number; year: string }> = {
+        "ABBV": {
+            year: "2024",
+            totalRevenue: 56300000000, // $56.3B
+            segments: [
+                { name: "Immunology", value: 26700000000 },
+                { name: "Neuroscience", value: 9000000000 },
+                { name: "Oncology", value: 6600000000 },
+                { name: "Aesthetics", value: 5200000000 },
+                { name: "Other Key Products", value: 3600000000 },
+                { name: "All Other", value: 3000000000 },
+                { name: "Eye Care", value: 2200000000 }
+            ]
+        },
+        "ABNB": {
+            year: "2024",
+            totalRevenue: 11100000000, // $11.1B
+            segments: [
+                { name: "Marketplace Platform Revenue", value: 11100000000 }
+            ]
+        }
+    }
+
     let secQualitative: any = null
     let secError = false
     let secErrorMessage: string | null = null
     try {
-        const cached = await getSecCache(data.ticker)
-        secQualitative = cached || await getSecQualitativeForTicker(data.ticker)
+        // Check for hardcoded manual overrides first
+        const manualOverride = MANUAL_SEGMENT_OVERRIDES[data.ticker.toUpperCase()]
+        if (manualOverride) {
+            const segmentTotal = manualOverride.segments.reduce((sum, seg) => sum + seg.value, 0)
+            secQualitative = {
+                totalRevenue: manualOverride.totalRevenue,
+                interestIncome: 0,
+                nonCompliantPercent: 0,
+                compliantPercent: 100,
+                questionablePercent: 0,
+                filing: null,
+                dataSources: {
+                    totalRevenue: `Manual override (${manualOverride.year} 10-K)`,
+                    interestIncome: "Manual override",
+                    segmentRevenue: `Manual override (${manualOverride.year} 10-K)`
+                },
+                segments: manualOverride.segments,
+                segmentTotal
+            }
+        }
+
+        const override = await getQualitativeOverride(data.ticker)
+        if (!secQualitative && override?.segments?.length) {
+            const segmentTotal = override.segments.reduce((sum: number, seg: any) => sum + (seg.value || 0), 0)
+            secQualitative = {
+                totalRevenue: Number(override.total_revenue || segmentTotal || 0),
+                interestIncome: 0,
+                nonCompliantPercent: 0,
+                compliantPercent: 100,
+                questionablePercent: 0,
+                filing: null,
+                dataSources: {
+                    totalRevenue: "Manual override",
+                    interestIncome: "Manual override",
+                    segmentRevenue: "Manual override"
+                },
+                segments: override.segments,
+                segmentTotal
+            }
+        }
+        
+        if (!secQualitative) {
+            const cached = await getSecCache(data.ticker)
+            secQualitative = cached || await getSecQualitativeForTicker(data.ticker)
+        }
         if (secQualitative) {
             compliantPercent = secQualitative.compliantPercent
             questionablePercent = secQualitative.questionablePercent
@@ -463,6 +545,40 @@ async function calculateScreening(data: StockData) {
                         if (lower.includes("experiences")) return "halal"
                         if (lower.includes("eliminations")) return "halal"
                     }
+                    if (data.ticker.toUpperCase() === "V") {
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "WMT") {
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "JPM") {
+                        const lower = name.toLowerCase()
+                        if (lower.includes("net interest")) return "haram"
+                        if (lower.includes("noninterest")) return "questionable"
+                    }
+                    if (data.ticker.toUpperCase() === "ABBV") {
+                        const lower = name.toLowerCase()
+                        // Immunology: Skyrizi, Humira, Rinvoq - halal pharmaceuticals
+                        if (lower.includes("immunology") || lower.includes("skyrizi") || lower.includes("humira") || lower.includes("rinvoq")) return "halal"
+                        // Oncology: Imbruvica, Venclexta, Elahere, Epkinly - halal pharmaceuticals
+                        if (lower.includes("oncology") || lower.includes("imbruvica") || lower.includes("venclexta") || lower.includes("elahere") || lower.includes("epkinly")) return "halal"
+                        // Neuroscience: Botox Therapeutic, Vraylar, Ubrelvy, Qulipta, Duodopa - halal (therapeutic use)
+                        if (lower.includes("neuroscience") || lower.includes("vraylar") || lower.includes("ubrelvy") || lower.includes("qulipta") || lower.includes("duodopa")) return "halal"
+                        if (lower.includes("botox therapeutic") || lower.includes("botox") && lower.includes("therapeutic")) return "halal"
+                        // Aesthetics: Botox Cosmetic, Juvederm - questionable (cosmetic/vanity)
+                        if (lower.includes("aesthetics") || lower.includes("cosmetic") || lower.includes("juvederm")) return "questionable"
+                        // Eye Care: Ozurdex, Lumigan, Alphagan, Restasis - halal pharmaceuticals
+                        if (lower.includes("eye care") || lower.includes("ozurdex") || lower.includes("lumigan") || lower.includes("ganfort") || lower.includes("alphagan") || lower.includes("combigan") || lower.includes("restasis")) return "halal"
+                        // Other products: Creon, Mavyret, Linzess - halal pharmaceuticals
+                        if (lower.includes("creon") || lower.includes("mavyret") || lower.includes("linzess") || lower.includes("constella")) return "halal"
+                        // Default for other pharma segments
+                        if (lower.includes("other") || lower.includes("all other")) return "questionable"
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "ABNB") {
+                        // Airbnb operates as a unified marketplace platform connecting hosts and guests - halal
+                        return "halal"
+                    }
                     if (isHaramSegment(name)) return "haram"
                     if (isQuestionableSegment(name)) return "questionable"
                     return "halal"
@@ -542,9 +658,9 @@ async function calculateScreening(data: StockData) {
         nonCompliantPercent = 100
         qualitativeMethod = "industry_estimate"
     } else if (qualitativeMethod === "insufficient_data" && (sectorLower === "financial services" || sectorLower === "financials")) {
-        compliantPercent = 10
-        questionablePercent = 20
-        nonCompliantPercent = 70
+        compliantPercent = 0
+        questionablePercent = 0
+        nonCompliantPercent = 100
         qualitativeMethod = "industry_estimate"
     } else if (qualitativeMethod === "insufficient_data") {
         const sectorKey = sectorLower.trim()
@@ -569,6 +685,9 @@ async function calculateScreening(data: StockData) {
     }
     if (isHaramBusiness) {
         issues.push(`Operates in non-compliant industry: ${data.industry}`)
+    }
+    if (sectorLower === "financial services" || sectorLower === "financials" || industryLower.includes("bank")) {
+        issues.push("Banking/financial industry treated as non-compliant")
     }
     if (qualitativeMethod === "segment_based" && qualitativeSources?.xbrlTags?.interestIncome === "Unavailable") {
         issues.push("Interest income not found in SEC XBRL; assumed 0%")
@@ -595,7 +714,7 @@ async function calculateScreening(data: StockData) {
         overallStatus = "Questionable"
     } else if (isHaramBusiness) {
         overallStatus = "Non-Compliant"
-    } else if (sectorLower === "financial services" || sectorLower === "financials") {
+    } else if (sectorLower === "financial services" || sectorLower === "financials" || industryLower.includes("bank")) {
         overallStatus = "Non-Compliant"
     } else if (typeof nonCompliantPercent === "number" && nonCompliantPercent >= 5) {
         overallStatus = "Non-Compliant"

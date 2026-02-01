@@ -7,6 +7,7 @@ export interface BlogPost {
     date: string
     readTime: string
     featured?: boolean
+    imageUrl?: string
 }
 
 export const blogPosts: BlogPost[] = [

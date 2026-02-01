@@ -1,8 +1,9 @@
 import Link from "next/link"
+import { createClient } from "@/utils/supabase/server"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { blogPosts, categoryLabels } from "@/lib/blog-data"
+import { blogPosts, categoryLabels, type BlogPost } from "@/lib/blog-data"
 import { Clock, ArrowRight, BookOpen, Sparkles, PlayCircle, Youtube, ExternalLink } from "lucide-react"
 
 // Real videos with actual YouTube IDs
@@ -45,9 +46,30 @@ const videos = [
     },
 ]
 
-export default function BlogPage() {
-    const featuredPosts = blogPosts.filter(p => p.featured)
-    const allPosts = blogPosts
+async function fetchBlogPosts(): Promise<BlogPost[]> {
+    const supabase = await createClient()
+    const { data } = await supabase
+        .from("blog_posts")
+        .select("slug,title,excerpt,category,author,date,read_time,featured,image_url")
+        .order("date", { ascending: false })
+    if (!data || data.length === 0) return blogPosts
+    return data.map((row: any) => ({
+        slug: row.slug,
+        title: row.title,
+        excerpt: row.excerpt,
+        category: row.category,
+        author: row.author,
+        date: row.date,
+        readTime: row.read_time,
+        featured: row.featured,
+        imageUrl: row.image_url || undefined
+    }))
+}
+
+export default async function BlogPage() {
+    const posts = await fetchBlogPosts()
+    const featuredPosts = posts.filter(p => p.featured)
+    const allPosts = posts
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-green-50/50 to-white">
@@ -165,7 +187,16 @@ export default function BlogPage() {
                     <div className="grid md:grid-cols-3 gap-6">
                         {featuredPosts.map((post) => (
                             <Link key={post.slug} href={`/blog/${post.slug}`}>
-                                <Card className="h-full bg-white hover:shadow-xl transition-all duration-300 hover:border-green-200 hover:-translate-y-1 group cursor-pointer">
+                                <Card className="h-full bg-white hover:shadow-xl transition-all duration-300 hover:border-green-200 hover:-translate-y-1 group cursor-pointer overflow-hidden">
+                                    {post.imageUrl && (
+                                        <div className="h-40 w-full overflow-hidden bg-gray-100">
+                                            <img
+                                                src={post.imageUrl}
+                                                alt={post.title}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            />
+                                        </div>
+                                    )}
                                     <CardContent className="p-6 space-y-4">
                                         <Badge variant="secondary" className="bg-green-100 text-green-700">{categoryLabels[post.category]}</Badge>
                                         <h3 className="text-lg font-semibold text-gray-900 group-hover:text-green-600 transition-colors line-clamp-2">{post.title}</h3>
@@ -194,7 +225,16 @@ export default function BlogPage() {
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {allPosts.map((post) => (
                             <Link key={post.slug} href={`/blog/${post.slug}`}>
-                                <Card className="h-full bg-white hover:shadow-lg transition-all duration-300 hover:border-green-200 hover:-translate-y-1 group cursor-pointer">
+                                <Card className="h-full bg-white hover:shadow-lg transition-all duration-300 hover:border-green-200 hover:-translate-y-1 group cursor-pointer overflow-hidden">
+                                    {post.imageUrl && (
+                                        <div className="h-32 w-full overflow-hidden bg-gray-100">
+                                            <img
+                                                src={post.imageUrl}
+                                                alt={post.title}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            />
+                                        </div>
+                                    )}
                                     <CardContent className="p-6 space-y-3">
                                         <Badge variant="outline" className="text-xs">{categoryLabels[post.category]}</Badge>
                                         <h3 className="font-semibold text-gray-900 group-hover:text-green-600 transition-colors">{post.title}</h3>

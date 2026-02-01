@@ -1,4 +1,5 @@
 import { getSegmentHints } from "@/lib/sec/segment-hints"
+import { isLockedTicker } from "@/lib/sec/locked-tickers"
 
 type SecFiling = {
     url: string
@@ -77,6 +78,82 @@ async function fetchSecText(url: string) {
     return res.text()
 }
 
+function getCandidateRevenueTables(html: string, limit = 4) {
+    const tables = html.match(/<table[\s\S]*?<\/table>/gi) || []
+    const revenueHint = /(net\s+revenue|revenues?\s+by\s+category|revenues?\s+by\s+segment|segment\s+revenue|revenues?\s+by\s+type|net\s+sales|sales\s+revenue|revenue\s+by\s+product|revenue\s+by\s+reportable\s+segments)/i
+    const scored = tables
+        .map((table) => {
+            const text = stripHtml(table)
+            const score = revenueHint.test(text) ? 1 : 0
+            return { text, score }
+        })
+        .filter(entry => entry.score > 0)
+    return scored.slice(0, limit).map(entry => entry.text)
+}
+
+async function llmExtractSegmentsFromHtml(ticker: string, html: string) {
+    if (isLockedTicker(ticker)) return []
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) return []
+
+    const model = process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20240620"
+    const candidates = getCandidateRevenueTables(html)
+    if (candidates.length === 0) return []
+
+    const system = [
+        "You are extracting revenue segments from a company's 10-K.",
+        "Return JSON only in this format:",
+        '{"segments":[{"name":"<segment name>","value":<number>,"tag":"10-K table (LLM)"}]}',
+        "Rules:",
+        "- Use the latest fiscal year values in the table.",
+        "- Only include actual revenue segments (exclude totals, EPS, margins, expenses).",
+        "- Values must be full numbers (not millions). If table says 'in millions', multiply by 1,000,000.",
+        '- If no valid revenue segments, return {"segments":[]}.'
+    ].join("\n")
+
+    const userContent = `Ticker: ${ticker}\n\nTables:\n${candidates.map((t, i) => `Table ${i + 1}:\n${t}`).join("\n\n")}`
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+            model,
+            max_tokens: 800,
+            temperature: 0,
+            system,
+            messages: [{ role: "user", content: userContent }]
+        })
+    })
+
+    if (!res.ok) return []
+    const data = await res.json()
+    const text = data?.content?.[0]?.text
+    if (!text) return []
+
+    try {
+        const parsed = JSON.parse(text)
+        if (!parsed?.segments || !Array.isArray(parsed.segments)) return []
+        return parsed.segments
+            .filter((seg: any) => seg?.name && typeof seg?.value === "number" && seg.value > 0)
+            .map((seg: any) => ({
+                name: seg.name,
+                value: seg.value,
+                tag: "10-K table (LLM)"
+            }))
+    } catch {
+        return []
+    }
+}
+
+function isLowQualitySegments(segments: { name: string }[]) {
+    const badLabel = /(years\s+ended|net\s+revenues?|total\s+revenues?|per\s+share|basic|diluted|operating\s+expense|income\s+before|other\s+income|other\s+revenues?)/i
+    const badCount = segments.filter(seg => badLabel.test(seg.name || "")).length
+    return segments.length === 0 || badCount / segments.length >= 0.4
+}
 function normalizeCik(cik: string) {
     return cik.padStart(10, "0")
 }
@@ -609,6 +686,25 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
                 if (textSegments.length > 0) {
                     segments = textSegments
                     segmentSource = "10-K text (best-effort)"
+                } else {
+                    const llmSegments = await llmExtractSegmentsFromHtml(ticker, html)
+                    if (llmSegments.length > 0) {
+                        segments = llmSegments
+                        segmentSource = "10-K table (LLM)"
+                    }
+                }
+            }
+
+            if (
+                segments.length > 0
+                && segmentSource !== "SEC XBRL (segment facts)"
+                && !isLockedTicker(ticker)
+                && isLowQualitySegments(segments)
+            ) {
+                const llmSegments = await llmExtractSegmentsFromHtml(ticker, html)
+                if (llmSegments.length > 0) {
+                    segments = llmSegments
+                    segmentSource = "10-K table (LLM)"
                 }
             }
         } catch {
@@ -671,6 +767,65 @@ export async function getSecQualitativeForTicker(ticker: string): Promise<SecQua
         segmentsWithPercent = disSegments.map(seg => ({
             ...seg,
             tag: "10-K table (manual override 2025)",
+            percentOfTotal: segmentTotal !== 0 ? Math.round((seg.value / segmentTotal) * 1000) / 10 : undefined,
+            compliance: undefined as "halal" | "haram" | "questionable" | undefined
+        }))
+    }
+
+    if (ticker.toUpperCase() === "V") {
+        const visaSegments = [
+            { name: "Service revenue", value: 17_539_000_000 },
+            { name: "Data processing revenue", value: 19_993_000_000 },
+            { name: "International transaction revenue", value: 14_166_000_000 },
+            { name: "Other revenue", value: 4_053_000_000 },
+            { name: "Client incentives", value: -15_751_000_000 }
+        ]
+        segmentTotal = visaSegments.reduce((sum, seg) => sum + seg.value, 0)
+        segmentsWithPercent = visaSegments.map(seg => ({
+            ...seg,
+            tag: "10-K table (manual override 2025)",
+            percentOfTotal: segmentTotal !== 0 ? Math.round((seg.value / segmentTotal) * 1000) / 10 : undefined,
+            compliance: undefined as "halal" | "haram" | "questionable" | undefined
+        }))
+    }
+
+    if (ticker.toUpperCase() === "WMT") {
+        const wmtSegments = [
+            { name: "Net sales", value: 674_538_000_000 },
+            { name: "Membership and other income", value: 6_447_000_000 }
+        ]
+        segmentTotal = wmtSegments.reduce((sum, seg) => sum + seg.value, 0)
+        segmentsWithPercent = wmtSegments.map(seg => ({
+            ...seg,
+            tag: "10-K table (manual override 2025)",
+            percentOfTotal: segmentTotal !== 0 ? Math.round((seg.value / segmentTotal) * 1000) / 10 : undefined,
+            compliance: undefined as "halal" | "haram" | "questionable" | undefined
+        }))
+    }
+
+    if (ticker.toUpperCase() === "JNJ") {
+        const jnjSegments = [
+            { name: "Innovative Medicine", value: 56_964_000_000 },
+            { name: "MedTech", value: 31_857_000_000 }
+        ]
+        segmentTotal = jnjSegments.reduce((sum, seg) => sum + seg.value, 0)
+        segmentsWithPercent = jnjSegments.map(seg => ({
+            ...seg,
+            tag: "10-K table (manual override 2024)",
+            percentOfTotal: segmentTotal !== 0 ? Math.round((seg.value / segmentTotal) * 1000) / 10 : undefined,
+            compliance: undefined as "halal" | "haram" | "questionable" | undefined
+        }))
+    }
+
+    if (ticker.toUpperCase() === "MA") {
+        const maSegments = [
+            { name: "Payment network", value: 17_300_000_000 },
+            { name: "Value-added services and solutions", value: 10_832_000_000 }
+        ]
+        segmentTotal = maSegments.reduce((sum, seg) => sum + seg.value, 0)
+        segmentsWithPercent = maSegments.map(seg => ({
+            ...seg,
+            tag: "10-K table (manual override 2024)",
             percentOfTotal: segmentTotal !== 0 ? Math.round((seg.value / segmentTotal) * 1000) / 10 : undefined,
             compliance: undefined as "halal" | "haram" | "questionable" | undefined
         }))

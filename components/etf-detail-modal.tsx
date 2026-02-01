@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { ETF } from "@/lib/etf-data"
+import type { ETF, ETFHolding, SectorAllocation } from "@/lib/etf-data"
 import {
   X,
   TrendingUp,
@@ -38,6 +38,39 @@ export function ETFDetailModal({ etf, open, onClose }: ETFDetailModalProps) {
   if (!etf) return null
 
   const isPositiveYTD = etf.performance.ytd >= 0
+  const [liveHoldings, setLiveHoldings] = useState<ETFHolding[] | null>(null)
+  const [liveSectors, setLiveSectors] = useState<SectorAllocation[] | null>(null)
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState<string | null>(null)
+  const [isHoldingsLoading, setIsHoldingsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !etf) return
+    const controller = new AbortController()
+    const fetchHoldings = async () => {
+      setIsHoldingsLoading(true)
+      try {
+        const response = await fetch(`/api/etf-holdings?ticker=${encodeURIComponent(etf.ticker)}&listing=${encodeURIComponent(etf.listing)}`, {
+          signal: controller.signal
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setLiveHoldings(Array.isArray(data.holdings) ? data.holdings : null)
+          setLiveSectors(Array.isArray(data.sectors) ? data.sectors : null)
+          setLiveUpdatedAt(data.updatedAt || null)
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setLiveHoldings(null)
+          setLiveSectors(null)
+          setLiveUpdatedAt(null)
+        }
+      } finally {
+        setIsHoldingsLoading(false)
+      }
+    }
+    fetchHoldings()
+    return () => controller.abort()
+  }, [open, etf])
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -126,12 +159,20 @@ export function ETFDetailModal({ etf, open, onClose }: ETFDetailModalProps) {
               <PerformanceChart performance={etf.performance} />
             </TabsContent>
 
-            <TabsContent value="holdings" className="mt-4">
-              <HoldingsTable holdings={etf.holdings} />
+            <TabsContent value="holdings" className="mt-4 space-y-2">
+              {isHoldingsLoading && (
+                <p className="text-xs text-muted-foreground">Refreshing holdings...</p>
+              )}
+              {liveUpdatedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Updated {new Date(liveUpdatedAt).toLocaleDateString()}
+                </p>
+              )}
+              <HoldingsTable holdings={liveHoldings ?? etf.holdings} />
             </TabsContent>
 
             <TabsContent value="sectors" className="mt-4">
-              <SectorChart sectors={etf.sectorAllocation} />
+              <SectorChart sectors={liveSectors ?? etf.sectorAllocation} />
             </TabsContent>
           </Tabs>
 
