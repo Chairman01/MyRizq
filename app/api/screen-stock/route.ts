@@ -418,6 +418,7 @@ async function calculateScreening(data: StockData) {
     let secQualitative: any = null
     let secError = false
     let secErrorMessage: string | null = null
+    let cached: any = null
     try {
         // Check for hardcoded manual overrides first
         const manualOverride = MANUAL_SEGMENT_OVERRIDES[data.ticker.toUpperCase()]
@@ -461,7 +462,7 @@ async function calculateScreening(data: StockData) {
         }
         
         if (!secQualitative) {
-            const cached = await getSecCache(data.ticker)
+            cached = await getSecCache(data.ticker)
             secQualitative = cached || await getSecQualitativeForTicker(data.ticker)
         }
         if (secQualitative) {
