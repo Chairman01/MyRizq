@@ -17,6 +17,7 @@ export const LOCKED_TICKERS: LockedTickerEntry[] = [
   { ticker: "TSLA", reason: "manual_override", notes: "manual review confirmed" },
   { ticker: "ABBV", reason: "manual_override", notes: "2024 segment summary: Immunology $26.7B, Neuroscience $9B, Oncology $6.6B, Aesthetics $5.2B, Eye Care $2.2B" },
   { ticker: "ABNB", reason: "manual_override", notes: "2024 unified marketplace platform revenue $11.1B - 100% halal" },
+  { ticker: "COST", reason: "manual_override", notes: "2025 10-K: Net Sales $269.9B + Membership Fees $5.3B = $275.2B - 100% halal" },
   { ticker: "NVDA", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "AAPL", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "META", reason: "strong_hints", notes: "ticker-specific parsing hints" },

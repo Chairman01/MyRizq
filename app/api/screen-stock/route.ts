@@ -412,6 +412,14 @@ async function calculateScreening(data: StockData) {
             segments: [
                 { name: "Marketplace Platform Revenue", value: 11100000000 }
             ]
+        },
+        "COST": {
+            year: "2025",
+            totalRevenue: 275235000000, // $275.2B
+            segments: [
+                { name: "Net Sales", value: 269912000000 },
+                { name: "Membership Fees", value: 5323000000 }
+            ]
         }
     }
 
@@ -578,6 +586,10 @@ async function calculateScreening(data: StockData) {
                     }
                     if (data.ticker.toUpperCase() === "ABNB") {
                         // Airbnb operates as a unified marketplace platform connecting hosts and guests - halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "COST") {
+                        // Costco - wholesale retail and membership fees - all halal
                         return "halal"
                     }
                     if (isHaramSegment(name)) return "haram"
