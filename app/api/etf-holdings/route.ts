@@ -60,7 +60,7 @@ async function fetchHoldingsForSymbol(symbol: string): Promise<HoldingsPayload |
       )
       return { ticker, name, weight }
     })
-    .filter(h => h.ticker && h.weight > 0)
+    .filter((h: ETFHolding) => h.ticker && h.weight > 0)
 
   if (holdings.length === 0) return null
 
