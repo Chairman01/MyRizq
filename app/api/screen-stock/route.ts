@@ -514,6 +514,18 @@ async function calculateScreening(data: StockData) {
                 { name: "Products", value: 44847000000 },
                 { name: "Subscriptions and services", value: 19040000000 }
             ]
+        },
+        "AAPL": {
+            year: "2025",
+            totalRevenue: 416161000000, // $416.161B
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/aapl-20240928.htm", filedAt: "2024-11-01" },
+            segments: [
+                { name: "iPhone", value: 209586000000 },
+                { name: "Services", value: 109158000000 },
+                { name: "Wearables, Home and Accessories", value: 35686000000 },
+                { name: "Mac", value: 33708000000 },
+                { name: "iPad", value: 28023000000 }
+            ]
         }
     }
 
@@ -713,6 +725,10 @@ async function calculateScreening(data: StockData) {
                     }
                     if (data.ticker.toUpperCase() === "AVGO") {
                         // Broadcom - semiconductor products and subscriptions/services - all halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "AAPL") {
+                        // Apple - consumer electronics and services - all halal
                         return "halal"
                     }
                     if (isHaramSegment(name)) return "haram"

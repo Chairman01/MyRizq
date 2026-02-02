@@ -29,6 +29,7 @@ export const LOCKED_TICKERS: LockedTickerEntry[] = [
   { ticker: "AMT", reason: "manual_override", notes: "2024 10-K: Property (US/Canada, LatAm, APAC, Data Centers, Europe) + Services = $10.1B - 100% halal tower infrastructure" },
   { ticker: "CSCO", reason: "manual_override", notes: "2025 10-K: Product $41.6B, Services $15B = $56.7B - 100% halal networking" },
   { ticker: "AVGO", reason: "manual_override", notes: "2025 10-K: Products $44.8B, Subscriptions/Services $19B = $63.9B - 100% halal semiconductors" },
+  { ticker: "AAPL", reason: "manual_override", notes: "2025 10-K: iPhone $209.6B, Services $109.2B, Wearables $35.7B, Mac $33.7B, iPad $28B = $416.2B - 100% halal" },
   { ticker: "NFLX", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "MSFT", reason: "strong_hints", notes: "ticker-specific parsing hints" }
 ]
