@@ -396,7 +396,7 @@ async function calculateScreening(data: StockData) {
         "ABBV": {
             year: "2024",
             totalRevenue: 56300000000, // $56.3B
-            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001551152&type=10-K", filedAt: "2025-02-21" },
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/1551152/000155115225000009/abbv-20241231.htm", filedAt: "2025-02-21" },
             segments: [
                 { name: "Immunology", value: 26700000000 },
                 { name: "Neuroscience", value: 9000000000 },
@@ -410,7 +410,7 @@ async function calculateScreening(data: StockData) {
         "ABNB": {
             year: "2024",
             totalRevenue: 11100000000, // $11.1B
-            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001559720&type=10-K", filedAt: "2025-02-13" },
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/1559720/000155972025000012/abnb-20241231.htm", filedAt: "2025-02-13" },
             segments: [
                 { name: "Marketplace Platform Revenue", value: 11100000000 }
             ]
@@ -418,7 +418,7 @@ async function calculateScreening(data: StockData) {
         "COST": {
             year: "2025",
             totalRevenue: 275235000000, // $275.2B
-            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000909832&type=10-K", filedAt: "2024-10-09" },
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/909832/000090983224000022/cost-20240901.htm", filedAt: "2024-10-09" },
             segments: [
                 { name: "Net Sales", value: 269912000000 },
                 { name: "Membership Fees", value: 5323000000 }
@@ -427,7 +427,7 @@ async function calculateScreening(data: StockData) {
         "XOM": {
             year: "2024",
             totalRevenue: 35052000000, // $35.05B (segment earnings excl. corporate)
-            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000034088&type=10-K", filedAt: "2025-02-19" },
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/34088/000003408825000012/xom-20241231.htm", filedAt: "2025-02-19" },
             segments: [
                 { name: "Upstream (Oil & Gas Production)", value: 25390000000 },
                 { name: "Energy Products (Refining & Fuel)", value: 4033000000 },
@@ -438,7 +438,7 @@ async function calculateScreening(data: StockData) {
         "GOOGL": {
             year: "2024",
             totalRevenue: 350018000000, // $350B
-            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001652044&type=10-K", filedAt: "2025-02-05" },
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000014/goog-20241231.htm", filedAt: "2025-02-05" },
             segments: [
                 { name: "Google Search & other", value: 198084000000 },
                 { name: "Google Cloud", value: 43229000000 },
@@ -452,7 +452,7 @@ async function calculateScreening(data: StockData) {
         "GOOG": {
             year: "2024",
             totalRevenue: 350018000000, // $350B
-            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001652044&type=10-K", filedAt: "2025-02-05" },
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000014/goog-20241231.htm", filedAt: "2025-02-05" },
             segments: [
                 { name: "Google Search & other", value: 198084000000 },
                 { name: "Google Cloud", value: 43229000000 },
