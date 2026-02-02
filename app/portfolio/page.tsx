@@ -29,6 +29,22 @@ const COMMON_CURRENCIES = [
     "HKD", "KRW", "MXN", "BRL", "ZAR"
 ]
 
+// Common cryptocurrencies with CoinGecko IDs
+const COMMON_CRYPTOS = [
+    { symbol: "BTC", name: "Bitcoin", id: "bitcoin" },
+    { symbol: "ETH", name: "Ethereum", id: "ethereum" },
+    { symbol: "SOL", name: "Solana", id: "solana" },
+    { symbol: "XRP", name: "XRP", id: "ripple" },
+    { symbol: "ADA", name: "Cardano", id: "cardano" },
+    { symbol: "AVAX", name: "Avalanche", id: "avalanche-2" },
+    { symbol: "DOT", name: "Polkadot", id: "polkadot" },
+    { symbol: "MATIC", name: "Polygon", id: "matic-network" },
+    { symbol: "LINK", name: "Chainlink", id: "chainlink" },
+    { symbol: "ATOM", name: "Cosmos", id: "cosmos" },
+    { symbol: "LTC", name: "Litecoin", id: "litecoin" },
+    { symbol: "UNI", name: "Uniswap", id: "uniswap" },
+]
+
 export default function PortfolioPage() {
     const {
         portfolios,
@@ -42,6 +58,7 @@ export default function PortfolioPage() {
         removeFromPortfolio,
         addToPortfolio,
         addCash,
+        addCrypto,
         setUserId,
         userId
     } = usePortfolio()
@@ -62,6 +79,17 @@ export default function PortfolioPage() {
     const [cashCurrency, setCashCurrency] = useState("USD")
     const [cashCurrencyCustom, setCashCurrencyCustom] = useState("")
     const [cashTargetPortfolioId, setCashTargetPortfolioId] = useState<string>("")
+
+    // Crypto Dialog State
+    const [isCryptoOpen, setIsCryptoOpen] = useState(false)
+    const [cryptoSymbol, setCryptoSymbol] = useState("")
+    const [cryptoName, setCryptoName] = useState("")
+    const [cryptoId, setCryptoId] = useState("")
+    const [cryptoAmount, setCryptoAmount] = useState("")
+    const [cryptoAvgPrice, setCryptoAvgPrice] = useState("")
+    const [cryptoAvgPriceCurrency, setCryptoAvgPriceCurrency] = useState("USD")
+    const [cryptoTargetPortfolioId, setCryptoTargetPortfolioId] = useState<string>("")
+    const [cryptoSearch, setCryptoSearch] = useState("")
 
     const supabase = createClient()
 
@@ -199,12 +227,15 @@ export default function PortfolioPage() {
         setSortConfig({ key, direction })
     }
 
-    // Fetch live prices
+    // Fetch live prices for stocks/ETFs
     useEffect(() => {
         const fetchPrices = async () => {
             if (portfolioItems.length === 0) return
             const newData: Record<string, any> = {}
-            await Promise.all(portfolioItems.map(async (item) => {
+            
+            // Fetch stock/ETF prices
+            const stockItems = portfolioItems.filter(item => item.type === 'Stock' || item.type === 'ETF')
+            await Promise.all(stockItems.map(async (item) => {
                 try {
                     const queryTicker = item.ticker === 'WSHR' ? 'WSHR.NE' : item.ticker
                     const res = await fetch(`/api/quote?ticker=${queryTicker}`)
@@ -214,6 +245,30 @@ export default function PortfolioPage() {
                     }
                 } catch (e) { }
             }))
+
+            // Fetch crypto prices
+            const cryptoItems = portfolioItems.filter(item => item.type === 'Crypto' && item.cryptoId)
+            if (cryptoItems.length > 0) {
+                try {
+                    const cryptoIds = cryptoItems.map(item => item.cryptoId).join(",")
+                    const res = await fetch(`/api/crypto-price?ids=${cryptoIds}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        cryptoItems.forEach(item => {
+                            if (item.cryptoId && data[item.cryptoId]) {
+                                newData[item.ticker] = {
+                                    price: data[item.cryptoId].price,
+                                    usdPrice: data[item.cryptoId].price,
+                                    change: data[item.cryptoId].change24h || 0,
+                                    changePercent: data[item.cryptoId].change24h || 0,
+                                    currency: 'USD'
+                                }
+                            }
+                        })
+                    }
+                } catch (e) { }
+            }
+
             setMarketData(prev => ({ ...prev, ...newData }))
         }
         fetchPrices()
@@ -409,6 +464,61 @@ export default function PortfolioPage() {
         setIsCashOpen(false)
     }
 
+    const openCryptoDialog = () => {
+        if (isAllSelected) {
+            const available = Object.values(portfolios).filter(p => p.id !== 'all')
+            if (available.length > 0) setCryptoTargetPortfolioId(available[0].id)
+        }
+        setIsCryptoOpen(true)
+    }
+
+    const selectCrypto = (crypto: typeof COMMON_CRYPTOS[0]) => {
+        setCryptoSymbol(crypto.symbol)
+        setCryptoName(crypto.name)
+        setCryptoId(crypto.id)
+        setCryptoSearch("")
+    }
+
+    const confirmAddCrypto = async () => {
+        const amount = parseFloat(cryptoAmount)
+        let avgPrice = parseFloat(cryptoAvgPrice)
+        if (!cryptoSymbol || !cryptoName || !cryptoId || !amount || amount <= 0 || !avgPrice || avgPrice <= 0) return
+        
+        // Convert to USD if different currency
+        if (cryptoAvgPriceCurrency !== 'USD') {
+            try {
+                const res = await fetch(`/api/fx?from=${cryptoAvgPriceCurrency}&to=USD`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (typeof data.rate === 'number') {
+                        avgPrice = avgPrice * data.rate
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to convert currency, using original price")
+            }
+        }
+        
+        addCrypto(cryptoSymbol, cryptoName, cryptoId, amount, avgPrice, isAllSelected ? cryptoTargetPortfolioId : undefined)
+        setCryptoSymbol("")
+        setCryptoName("")
+        setCryptoId("")
+        setCryptoAmount("")
+        setCryptoAvgPrice("")
+        setCryptoAvgPriceCurrency("USD")
+        setCryptoSearch("")
+        setIsCryptoOpen(false)
+    }
+
+    const filteredCryptos = useMemo(() => {
+        if (!cryptoSearch) return COMMON_CRYPTOS
+        const search = cryptoSearch.toLowerCase()
+        return COMMON_CRYPTOS.filter(c => 
+            c.symbol.toLowerCase().includes(search) || 
+            c.name.toLowerCase().includes(search)
+        )
+    }, [cryptoSearch])
+
 
     if (!isMounted) return null
 
@@ -546,6 +656,14 @@ export default function PortfolioPage() {
                                                 <DollarSign className="w-4 h-4 text-green-600" />
                                                 Add Cash (Any Currency)
                                             </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full justify-start gap-2 mt-2"
+                                                onClick={openCryptoDialog}
+                                            >
+                                                <TrendingUp className="w-4 h-4 text-orange-500" />
+                                                Add Crypto
+                                            </Button>
                                         </div>
 
                                         <Tabs defaultValue="etfs" className="flex-1 flex flex-col overflow-hidden">
@@ -627,8 +745,9 @@ export default function PortfolioPage() {
                                                         const itemGain = itemValue - itemCost
                                                         const itemGainPct = itemCost > 0 ? (itemGain / itemCost) * 100 : 0
                                                         const isCash = item.type === 'Cash'
+                                                        const isCrypto = item.type === 'Crypto'
                                                         let isCompliant = false
-                                                        if (isCash) {
+                                                        if (isCash || isCrypto) {
                                                             isCompliant = true
                                                         } else {
                                                             const checkRes = checkCompliance(item.ticker, item.type)
@@ -643,6 +762,11 @@ export default function PortfolioPage() {
                                                                                 <div className="font-bold text-gray-900">Cash</div>
                                                                                 <div className="text-xs text-muted-foreground">{item.currency || 'USD'}</div>
                                                                             </>
+                                                                        ) : isCrypto ? (
+                                                                            <>
+                                                                                <div className="font-bold text-gray-900">{item.ticker}</div>
+                                                                                <div className="text-xs text-muted-foreground truncate">{item.name}</div>
+                                                                            </>
                                                                         ) : (
                                                                             <>
                                                                                 <Link href={`/screener?q=${item.ticker}`} className="hover:underline font-bold text-gray-900">
@@ -652,8 +776,8 @@ export default function PortfolioPage() {
                                                                             </>
                                                                         )}
                                                                     </div>
-                                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-1 ${isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                                        {isCash ? 'Cash' : (isCompliant ? 'Shariah' : 'Non‑Shariah')}
+                                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-1 ${isCrypto ? 'bg-orange-50 text-orange-700 border-orange-200' : (isCash ? 'bg-gray-50 text-gray-600 border-gray-200' : (isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'))}`}>
+                                                                        {isCash ? 'Cash' : (isCrypto ? 'Crypto' : (isCompliant ? 'Shariah' : 'Non‑Shariah'))}
                                                                     </Badge>
                                                                 </div>
                                                                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
@@ -717,17 +841,18 @@ export default function PortfolioPage() {
                                                         const itemGain = itemValue - itemCost
                                                         const itemGainPct = itemCost > 0 ? (itemGain / itemCost) * 100 : 0
                                                         const isCash = item.type === 'Cash'
+                                                        const isCrypto = item.type === 'Crypto'
 
                                                         // Compliance Handling
                                                         let isCompliant = false
 
-                                                        if (isCash) {
+                                                        if (isCash || isCrypto) {
                                                             isCompliant = true
                                                         } else {
                                                             const checkRes = checkCompliance(item.ticker, item.type)
                                                             isCompliant = checkRes
                                                         }
-                                                        const statusText = isCompliant ? 'Shariah Compliant' : 'Non-Shariah Compliant'
+                                                        const statusText = isCrypto ? 'Cryptocurrency' : (isCompliant ? 'Shariah Compliant' : 'Non-Shariah Compliant')
 
                                                         // Find which portfolio this item belongs to
                                                         const pNames = Object.values(portfolios)
@@ -743,6 +868,11 @@ export default function PortfolioPage() {
                                                                         <>
                                                                             <div className="font-bold text-gray-900 truncate text-sm">Cash</div>
                                                                             <span className="text-xs text-muted-foreground truncate block">{item.currency || 'USD'}</span>
+                                                                        </>
+                                                                    ) : isCrypto ? (
+                                                                        <>
+                                                                            <div className="font-bold text-gray-900 truncate text-sm">{item.ticker}</div>
+                                                                            <span className="text-xs text-muted-foreground truncate block">{item.name}</span>
                                                                         </>
                                                                     ) : (
                                                                         <>
@@ -766,6 +896,11 @@ export default function PortfolioPage() {
                                                                     {isCash ? (
                                                                         <Badge variant="outline" className="text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto bg-gray-50 text-gray-600 border-gray-200">
                                                                             <span>Cash</span>
+                                                                        </Badge>
+                                                                    ) : isCrypto ? (
+                                                                        <Badge variant="outline" className="text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto bg-orange-50 text-orange-700 border-orange-200">
+                                                                            <TrendingUp className="w-3 h-3 shrink-0" />
+                                                                            <span>Crypto</span>
                                                                         </Badge>
                                                                     ) : (
                                                                         <Badge variant="outline" className={`text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto ${isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
@@ -982,6 +1117,116 @@ export default function PortfolioPage() {
                             <Button variant="outline" onClick={() => setIsCashOpen(false)}>Cancel</Button>
                             <Button onClick={confirmAddCash} disabled={!cashAmount}>
                                 Add Cash
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Add Crypto Dialog */}
+                <Dialog open={isCryptoOpen} onOpenChange={setIsCryptoOpen}>
+                    <DialogContent className="w-[90%] sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Add Cryptocurrency</DialogTitle>
+                            <CardDescription>
+                                Track your crypto holdings. Prices fetched automatically.
+                            </CardDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                            {isAllSelected && (
+                                <div>
+                                    <Label className="mb-2 block">Target Portfolio</Label>
+                                    <Select value={cryptoTargetPortfolioId} onValueChange={setCryptoTargetPortfolioId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.values(portfolios)
+                                                .filter(p => p.id !== 'all' && p.id !== 'default')
+                                                .map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                ))
+                                            }
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            
+                            <div className="space-y-2">
+                                <Label>Select Cryptocurrency</Label>
+                                <Input
+                                    placeholder="Search crypto..."
+                                    value={cryptoSearch}
+                                    onChange={(e) => setCryptoSearch(e.target.value)}
+                                />
+                                {cryptoSymbol && (
+                                    <div className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
+                                        <Badge className="bg-orange-500">{cryptoSymbol}</Badge>
+                                        <span className="text-sm">{cryptoName}</span>
+                                    </div>
+                                )}
+                                <div className="max-h-32 overflow-y-auto border rounded-lg divide-y">
+                                    {filteredCryptos.map(crypto => (
+                                        <div 
+                                            key={crypto.id}
+                                            className="flex items-center justify-between p-2 hover:bg-muted cursor-pointer"
+                                            onClick={() => selectCrypto(crypto)}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-xs">{crypto.symbol}</Badge>
+                                                <span className="text-sm">{crypto.name}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Amount (Coins)</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={cryptoAmount}
+                                    onChange={(e) => setCryptoAmount(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="col-span-2 space-y-2">
+                                    <Label>Avg Price</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={cryptoAvgPrice}
+                                        onChange={(e) => setCryptoAvgPrice(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Currency</Label>
+                                    <Select value={cryptoAvgPriceCurrency} onValueChange={setCryptoAvgPriceCurrency}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COMMON_CURRENCIES.map(code => (
+                                                <SelectItem key={code} value={code}>{code}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            {cryptoAvgPriceCurrency !== 'USD' && (
+                                <p className="text-xs text-muted-foreground">
+                                    Price will be converted to USD when added.
+                                </p>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCryptoOpen(false)}>Cancel</Button>
+                            <Button 
+                                onClick={confirmAddCrypto} 
+                                disabled={!cryptoSymbol || !cryptoAmount || !cryptoAvgPrice}
+                            >
+                                Add Crypto
                             </Button>
                         </DialogFooter>
                     </DialogContent>

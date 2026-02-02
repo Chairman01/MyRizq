@@ -24,6 +24,11 @@ export const LOCKED_TICKERS: LockedTickerEntry[] = [
   { ticker: "META", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "GOOGL", reason: "manual_override", notes: "2024 10-K: Total $350B - Search $198B, Cloud $43B, Subscriptions $40B, YouTube $36B, Network $30B" },
   { ticker: "GOOG", reason: "manual_override", notes: "2024 10-K: Total $350B - Search $198B, Cloud $43B, Subscriptions $40B, YouTube $36B, Network $30B" },
+  { ticker: "ADBE", reason: "manual_override", notes: "2025 10-K: Subscription $22.9B, Services $540M, Product $325M = $23.8B - 100% halal software" },
+  { ticker: "AMD", reason: "manual_override", notes: "2024 10-K: Data Center $12.6B, Client $7B, Embedded $3.6B, Gaming $2.6B = $25.8B - 100% halal semiconductors" },
+  { ticker: "AMT", reason: "manual_override", notes: "2024 10-K: Property (US/Canada, LatAm, APAC, Data Centers, Europe) + Services = $10.1B - 100% halal tower infrastructure" },
+  { ticker: "CSCO", reason: "manual_override", notes: "2025 10-K: Product $41.6B, Services $15B = $56.7B - 100% halal networking" },
+  { ticker: "AVGO", reason: "manual_override", notes: "2025 10-K: Products $44.8B, Subscriptions/Services $19B = $63.9B - 100% halal semiconductors" },
   { ticker: "NFLX", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "MSFT", reason: "strong_hints", notes: "ticker-specific parsing hints" }
 ]

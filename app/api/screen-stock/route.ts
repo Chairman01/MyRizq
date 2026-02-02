@@ -462,6 +462,58 @@ async function calculateScreening(data: StockData) {
                 { name: "Other Bets", value: 1648000000 },
                 { name: "Hedging gains (losses)", value: 211000000 }
             ]
+        },
+        "ADBE": {
+            year: "2025",
+            totalRevenue: 23769000000, // $23.769B
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/796343/000079634325000004/adbe-20241129.htm", filedAt: "2025-01-15" },
+            segments: [
+                { name: "Subscription", value: 22904000000 },
+                { name: "Services and other", value: 540000000 },
+                { name: "Product", value: 325000000 }
+            ]
+        },
+        "AMD": {
+            year: "2024",
+            totalRevenue: 25785000000, // $25.785B
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/2488/000000248825000012/amd-20241228.htm", filedAt: "2025-01-29" },
+            segments: [
+                { name: "Data Center", value: 12579000000 },
+                { name: "Client", value: 7054000000 },
+                { name: "Embedded", value: 3557000000 },
+                { name: "Gaming", value: 2595000000 }
+            ]
+        },
+        "AMT": {
+            year: "2024",
+            totalRevenue: 10127200000, // $10.127B
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/1053507/000105350725000008/amt-20241231.htm", filedAt: "2025-02-20" },
+            segments: [
+                { name: "Property - U.S. & Canada", value: 5248100000 },
+                { name: "Property - Latin America", value: 1717900000 },
+                { name: "Property - Africa & APAC", value: 1208000000 },
+                { name: "Property - Data Centers", value: 924800000 },
+                { name: "Property - Europe", value: 834700000 },
+                { name: "Services", value: 193700000 }
+            ]
+        },
+        "CSCO": {
+            year: "2025",
+            totalRevenue: 56654000000, // $56.654B
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/858877/000085887725000029/csco-20250726.htm", filedAt: "2025-09-04" },
+            segments: [
+                { name: "Product", value: 41608000000 },
+                { name: "Services", value: 15046000000 }
+            ]
+        },
+        "AVGO": {
+            year: "2025",
+            totalRevenue: 63887000000, // $63.887B
+            filing: { url: "https://www.sec.gov/Archives/edgar/data/1730168/000173016825000008/avgo-20241103.htm", filedAt: "2024-12-13" },
+            segments: [
+                { name: "Products", value: 44847000000 },
+                { name: "Subscriptions and services", value: 19040000000 }
+            ]
         }
     }
 
@@ -641,6 +693,26 @@ async function calculateScreening(data: StockData) {
                     }
                     if (data.ticker.toUpperCase() === "XOM") {
                         // Exxon Mobil - oil & gas, refining, chemicals, specialty products - all halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "ADBE") {
+                        // Adobe - subscription software, products, and services - all halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "AMD") {
+                        // AMD - semiconductors: data center, client, gaming, embedded - all halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "AMT") {
+                        // American Tower - tower infrastructure leasing and services - all halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "CSCO") {
+                        // Cisco - networking products and services - all halal
+                        return "halal"
+                    }
+                    if (data.ticker.toUpperCase() === "AVGO") {
+                        // Broadcom - semiconductor products and subscriptions/services - all halal
                         return "halal"
                     }
                     if (isHaramSegment(name)) return "haram"

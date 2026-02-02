@@ -8,7 +8,7 @@ import { usePaywall } from './use-paywall'
 export interface PortfolioItem {
     ticker: string
     name: string
-    type: 'ETF' | 'Stock' | 'Cash'
+    type: 'ETF' | 'Stock' | 'Cash' | 'Crypto'
     allocation: number // For Simulator
     shares?: number    // For Tracker
     avgPrice?: number  // For Tracker
@@ -16,6 +16,8 @@ export interface PortfolioItem {
     expenseRatio?: number
     currency?: string
     amount?: number
+    // Crypto-specific fields
+    cryptoId?: string  // CoinGecko ID for price fetching
     // Could add 'shares' and 'avgPrice' later for real tracking
 }
 
@@ -42,6 +44,7 @@ interface PortfolioState {
     // Item Actions
     addToPortfolio: (ticker: string, name: string, type?: 'ETF' | 'Stock', extras?: { sector?: string, expenseRatio?: number, shares?: number, avgPrice?: number }, portfolioId?: string) => void
     addCash: (currency: string, amount: number, portfolioId?: string) => void
+    addCrypto: (symbol: string, name: string, cryptoId: string, amount: number, avgPrice: number, portfolioId?: string) => void
     removeFromPortfolio: (ticker: string) => void
     updateAllocation: (ticker: string, allocation: number) => void
     updateHolding: (ticker: string, shares: number, avgPrice: number) => void
@@ -323,6 +326,64 @@ export const usePortfolio = create<PortfolioState>()(
                     portfolios: { ...state.portfolios, [targetId]: updatedPortfolio }
                 }))
                 toast.success(`Added Cash (${targetCurrency})`)
+
+                if (userId) {
+                    const supabase = createClient()
+                    await supabase.from('portfolios').update({ items: updatedPortfolio.items, updated_at: new Date() }).eq('id', targetId)
+                }
+            },
+
+            addCrypto: async (symbol, name, cryptoId, amount, avgPrice, portfolioId) => {
+                if (!symbol || !name || amount <= 0) return
+
+                const { portfolios, currentPortfolioId, userId } = get()
+                let targetId = portfolioId || currentPortfolioId
+
+                if (!portfolios[targetId] || (userId && portfolios[targetId].ownerId !== userId)) {
+                    const userPortfolios = Object.values(portfolios).filter(p => p.ownerId === userId)
+                    if (userPortfolios.length > 0) {
+                        targetId = userPortfolios[0].id
+                        set({ currentPortfolioId: targetId })
+                    } else {
+                        return
+                    }
+                }
+
+                const current = get().portfolios[targetId]
+                const cryptoTicker = symbol.toUpperCase()
+                const existingIndex = current.items.findIndex(p => p.ticker === cryptoTicker && p.type === 'Crypto')
+
+                let updatedItems: PortfolioItem[]
+                if (existingIndex >= 0) {
+                    // Update existing crypto holding
+                    updatedItems = current.items.map((item, idx) => {
+                        if (idx !== existingIndex) return item
+                        const currentAmount = item.shares || 0
+                        const currentAvg = item.avgPrice || 0
+                        const totalCost = (currentAmount * currentAvg) + (amount * avgPrice)
+                        const totalAmount = currentAmount + amount
+                        const newAvgPrice = totalAmount > 0 ? totalCost / totalAmount : avgPrice
+                        return { ...item, shares: totalAmount, avgPrice: newAvgPrice }
+                    })
+                } else {
+                    const newItem: PortfolioItem = {
+                        ticker: cryptoTicker,
+                        name: name,
+                        type: 'Crypto',
+                        allocation: 0,
+                        shares: amount,
+                        avgPrice: avgPrice,
+                        cryptoId: cryptoId
+                    }
+                    updatedItems = [...current.items, newItem]
+                }
+
+                const updatedPortfolio = { ...current, items: updatedItems }
+
+                set(state => ({
+                    portfolios: { ...state.portfolios, [targetId]: updatedPortfolio }
+                }))
+                toast.success(`Added ${cryptoTicker}`)
 
                 if (userId) {
                     const supabase = createClient()
