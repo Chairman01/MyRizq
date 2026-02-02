@@ -392,10 +392,11 @@ async function calculateScreening(data: StockData) {
 
     const issues: string[] = []
     // Hardcoded segment overrides for specific tickers (manual research)
-    const MANUAL_SEGMENT_OVERRIDES: Record<string, { segments: { name: string; value: number }[]; totalRevenue: number; year: string }> = {
+    const MANUAL_SEGMENT_OVERRIDES: Record<string, { segments: { name: string; value: number }[]; totalRevenue: number; year: string; filing?: { url: string; filedAt: string } }> = {
         "ABBV": {
             year: "2024",
             totalRevenue: 56300000000, // $56.3B
+            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001551152&type=10-K", filedAt: "2025-02-21" },
             segments: [
                 { name: "Immunology", value: 26700000000 },
                 { name: "Neuroscience", value: 9000000000 },
@@ -409,6 +410,7 @@ async function calculateScreening(data: StockData) {
         "ABNB": {
             year: "2024",
             totalRevenue: 11100000000, // $11.1B
+            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001559720&type=10-K", filedAt: "2025-02-13" },
             segments: [
                 { name: "Marketplace Platform Revenue", value: 11100000000 }
             ]
@@ -416,6 +418,7 @@ async function calculateScreening(data: StockData) {
         "COST": {
             year: "2025",
             totalRevenue: 275235000000, // $275.2B
+            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000909832&type=10-K", filedAt: "2024-10-09" },
             segments: [
                 { name: "Net Sales", value: 269912000000 },
                 { name: "Membership Fees", value: 5323000000 }
@@ -424,6 +427,7 @@ async function calculateScreening(data: StockData) {
         "XOM": {
             year: "2024",
             totalRevenue: 35052000000, // $35.05B (segment earnings excl. corporate)
+            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000034088&type=10-K", filedAt: "2025-02-19" },
             segments: [
                 { name: "Upstream (Oil & Gas Production)", value: 25390000000 },
                 { name: "Energy Products (Refining & Fuel)", value: 4033000000 },
@@ -434,6 +438,7 @@ async function calculateScreening(data: StockData) {
         "GOOGL": {
             year: "2024",
             totalRevenue: 350018000000, // $350B
+            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001652044&type=10-K", filedAt: "2025-02-05" },
             segments: [
                 { name: "Google Search & other", value: 198084000000 },
                 { name: "Google Cloud", value: 43229000000 },
@@ -447,6 +452,7 @@ async function calculateScreening(data: StockData) {
         "GOOG": {
             year: "2024",
             totalRevenue: 350018000000, // $350B
+            filing: { url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001652044&type=10-K", filedAt: "2025-02-05" },
             segments: [
                 { name: "Google Search & other", value: 198084000000 },
                 { name: "Google Cloud", value: 43229000000 },
@@ -474,7 +480,12 @@ async function calculateScreening(data: StockData) {
                 nonCompliantPercent: 0,
                 compliantPercent: 100,
                 questionablePercent: 0,
-                filing: null,
+                filing: manualOverride.filing ? {
+                    url: manualOverride.filing.url,
+                    filedAt: manualOverride.filing.filedAt,
+                    accession: "",
+                    primaryDocument: ""
+                } : null,
                 dataSources: {
                     totalRevenue: `Manual override (${manualOverride.year} 10-K)`,
                     interestIncome: "Manual override",
