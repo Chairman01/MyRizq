@@ -22,8 +22,8 @@ export const LOCKED_TICKERS: LockedTickerEntry[] = [
   { ticker: "NVDA", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "AAPL", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "META", reason: "strong_hints", notes: "ticker-specific parsing hints" },
-  { ticker: "GOOGL", reason: "strong_hints", notes: "ticker-specific parsing hints" },
-  { ticker: "GOOG", reason: "strong_hints", notes: "ticker-specific parsing hints" },
+  { ticker: "GOOGL", reason: "manual_override", notes: "2024 10-K: Total $350B - Search $198B, Cloud $43B, Subscriptions $40B, YouTube $36B, Network $30B" },
+  { ticker: "GOOG", reason: "manual_override", notes: "2024 10-K: Total $350B - Search $198B, Cloud $43B, Subscriptions $40B, YouTube $36B, Network $30B" },
   { ticker: "NFLX", reason: "strong_hints", notes: "ticker-specific parsing hints" },
   { ticker: "MSFT", reason: "strong_hints", notes: "ticker-specific parsing hints" }
 ]

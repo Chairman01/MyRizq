@@ -430,6 +430,32 @@ async function calculateScreening(data: StockData) {
                 { name: "Specialty Products", value: 3052000000 },
                 { name: "Chemical Products", value: 2577000000 }
             ]
+        },
+        "GOOGL": {
+            year: "2024",
+            totalRevenue: 350018000000, // $350B
+            segments: [
+                { name: "Google Search & other", value: 198084000000 },
+                { name: "Google Cloud", value: 43229000000 },
+                { name: "Google subscriptions, platforms, and devices", value: 40340000000 },
+                { name: "YouTube ads", value: 36147000000 },
+                { name: "Google Network", value: 30359000000 },
+                { name: "Other Bets", value: 1648000000 },
+                { name: "Hedging gains (losses)", value: 211000000 }
+            ]
+        },
+        "GOOG": {
+            year: "2024",
+            totalRevenue: 350018000000, // $350B
+            segments: [
+                { name: "Google Search & other", value: 198084000000 },
+                { name: "Google Cloud", value: 43229000000 },
+                { name: "Google subscriptions, platforms, and devices", value: 40340000000 },
+                { name: "YouTube ads", value: 36147000000 },
+                { name: "Google Network", value: 30359000000 },
+                { name: "Other Bets", value: 1648000000 },
+                { name: "Hedging gains (losses)", value: 211000000 }
+            ]
         }
     }
 
