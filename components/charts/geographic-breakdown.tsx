@@ -47,7 +47,7 @@ export function GeographicBreakdown({ items }: { items: PortfolioItem[] }) {
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(val: number) => `$${val.toFixed(2)}`} />
+                            <Tooltip formatter={(val: number) => [`$${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Value']} />
                             <Legend />
                         </PieChart>
                     </ResponsiveContainer>

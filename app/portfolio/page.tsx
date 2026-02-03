@@ -154,7 +154,31 @@ export default function PortfolioPage() {
     }
 
     const sortedItems = useMemo(() => {
-        let items = [...portfolioItems]
+        // First, consolidate all cash positions into one USD entry
+        const cashItems = portfolioItems.filter(item => item.type === 'Cash')
+        const nonCashItems = portfolioItems.filter(item => item.type !== 'Cash')
+
+        let consolidatedItems = [...nonCashItems]
+
+        if (cashItems.length > 0) {
+            // Calculate total cash value in USD
+            const totalCashUSD = cashItems.reduce((sum, item) => {
+                return sum + getItemUsdValue(item)
+            }, 0)
+
+            // Create a single consolidated cash entry
+            consolidatedItems.push({
+                ticker: 'CASH',
+                name: 'Cash (All Currencies)',
+                type: 'Cash',
+                shares: totalCashUSD, // Store USD value in shares for display
+                avgPrice: 1,
+                amount: totalCashUSD,
+                currency: 'USD'
+            } as any)
+        }
+
+        let items = [...consolidatedItems]
         if (!sortConfig.key) return items
 
         return items.sort((a, b) => {

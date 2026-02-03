@@ -63,7 +63,7 @@ export function ComplianceBreakdown({ items }: { items: PortfolioItem[] }) {
                                     <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS] || '#94a3b8'} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(val: number) => `$${val.toFixed(2)}`} />
+                            <Tooltip formatter={(val: number) => [`$${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Value']} />
                             <Legend verticalAlign="bottom" height={36} />
                         </PieChart>
                     </ResponsiveContainer>

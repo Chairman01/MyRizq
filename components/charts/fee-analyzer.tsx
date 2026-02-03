@@ -57,9 +57,9 @@ export function FeeAnalyzer({ items }: { items: PortfolioItem[] }) {
                     </ResponsiveContainer>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground">
-                    <p>You pay approximately <span className="font-bold text-foreground">${myFee.toFixed(2)}</span> per year in fees.</p>
+                    <p>You pay approximately <span className="font-bold text-foreground">${myFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> per year in fees.</p>
                     <p className="text-xs mt-1">
-                        vs Conventional Mutual Funds (~2%): <span className="text-red-500 font-medium">${conventionalFee.toFixed(2)}</span>
+                        vs Conventional Mutual Funds (~2%): <span className="text-red-500 font-medium">${conventionalFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </p>
                 </div>
             </CardContent>
