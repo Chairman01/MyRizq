@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { usePortfolio } from "@/hooks/use-portfolio"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePaywall } from "@/hooks/use-paywall"
-import { TrendingUp, DollarSign, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Activity, Search, PlusCircle, X, ShieldCheck } from "lucide-react"
+import { TrendingUp, DollarSign, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Activity, Search, PlusCircle, X, ShieldCheck, Pencil, Hash, Percent, Wallet } from "lucide-react"
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { etfData } from "@/lib/etf-data"
-import { stockDatabase } from "@/lib/stock-data"
+import { stockDatabase, checkCompliance } from "@/lib/stock-data"
 
 // Charts
 import { FeeAnalyzer } from "@/components/charts/fee-analyzer"
@@ -22,29 +22,8 @@ import { GeographicBreakdown } from "@/components/charts/geographic-breakdown"
 import { ComplianceBreakdown } from "@/components/charts/compliance-breakdown"
 import { AssetAllocation } from "@/components/charts/asset-allocation"
 
-const generateMockHistory = (baseValue: number) => {
-    const data = []
-    let value = baseValue
-    const volatility = 0.02 // 2% daily volatility
-
-    for (let i = 30; i >= 0; i--) {
-        const date = new Date()
-        date.setDate(date.getDate() - i)
-
-        // Random daily change
-        const change = 1 + (Math.random() * volatility * 2 - volatility)
-        value = value * change
-
-        data.push({
-            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            value: parseFloat(value.toFixed(2))
-        })
-    }
-    return data
-}
-
 export function DashboardHome() {
-    const { getCurrentPortfolio, getAllPortfolios, getAggregatedPortfolio, createPortfolio, selectPortfolio, currentPortfolioId, addToPortfolio, updateHolding } = usePortfolio()
+    const { getCurrentPortfolio, getAllPortfolios, getAggregatedPortfolio, createPortfolio, selectPortfolio, currentPortfolioId, addToPortfolio, updateHolding, portfolios } = usePortfolio()
     const { isPremium } = usePaywall()
 
     // Quick Add State
@@ -53,6 +32,10 @@ export function DashboardHome() {
     const [shares, setShares] = useState("")
     const [price, setPrice] = useState("")
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+
+    // Rename Portfolio State
+    const [isRenameOpen, setIsRenameOpen] = useState(false)
+    const [newName, setNewName] = useState("")
 
     // Real-time Data
     const [marketData, setMarketData] = useState<Record<string, { price: number, change: number, changePercent: number, currency?: string, usdPrice?: number, usdChange?: number }>>({})
@@ -66,21 +49,26 @@ export function DashboardHome() {
     const currentPortfolio = isAllSelected ? getAggregatedPortfolio() : getCurrentPortfolio()
     const portfolioItems = currentPortfolio?.items || []
     const nonCashItems = portfolioItems.filter(item => item.type !== 'Cash')
+    const cryptoItems = portfolioItems.filter(item => item.type === 'Crypto')
 
     useEffect(() => {
         setIsMounted(true)
     }, [])
 
-    // Fetch Prices Effect
+    // Fetch Prices Effect (stocks, ETFs, and crypto)
     useEffect(() => {
         const fetchPrices = async () => {
             if (portfolioItems.length === 0) return
             setIsLoadingData(true)
 
             const newData: Record<string, any> = {}
-            await Promise.all(portfolioItems.map(async (item) => {
+            
+            // Fetch stock/ETF prices
+            const stockItems = portfolioItems.filter(item => item.type === 'Stock' || item.type === 'ETF')
+            await Promise.all(stockItems.map(async (item) => {
                 try {
-                    const res = await fetch(`/api/quote?ticker=${item.ticker}`)
+                    const queryTicker = item.ticker === 'WSHR' ? 'WSHR.NE' : item.ticker
+                    const res = await fetch(`/api/quote?ticker=${queryTicker}`)
                     if (res.ok) {
                         const data = await res.json()
                         newData[item.ticker] = data
@@ -89,6 +77,31 @@ export function DashboardHome() {
                     console.error("Failed to fetch price for", item.ticker)
                 }
             }))
+
+            // Fetch crypto prices
+            const cryptoItemsList = portfolioItems.filter(item => item.type === 'Crypto' && item.cryptoId)
+            if (cryptoItemsList.length > 0) {
+                try {
+                    const cryptoIds = cryptoItemsList.map(item => item.cryptoId).join(",")
+                    const res = await fetch(`/api/crypto-price?ids=${cryptoIds}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        cryptoItemsList.forEach(item => {
+                            if (item.cryptoId && data[item.cryptoId]) {
+                                newData[item.ticker] = {
+                                    price: data[item.cryptoId].price,
+                                    usdPrice: data[item.cryptoId].price,
+                                    change: data[item.cryptoId].change24h || 0,
+                                    changePercent: data[item.cryptoId].change24h || 0,
+                                    currency: 'USD'
+                                }
+                            }
+                        })
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch crypto prices")
+                }
+            }
 
             setMarketData(prev => ({ ...prev, ...newData }))
             setIsLoadingData(false)
@@ -161,6 +174,35 @@ export function DashboardHome() {
     const handleCreatePortfolio = () => {
         const name = prompt("Enter Portfolio Name (e.g. TFSA, RRSP, Crypto):")
         if (name) createPortfolio(name)
+    }
+
+    // Handle Rename Portfolio
+    const openRenameDialog = () => {
+        if (currentPortfolio && !isAllSelected) {
+            setNewName(currentPortfolio.name)
+            setIsRenameOpen(true)
+        }
+    }
+
+    const handleRenamePortfolio = async () => {
+        if (!newName.trim() || !currentPortfolio || isAllSelected) return
+        
+        // Update in Zustand store
+        const { portfolios } = usePortfolio.getState()
+        const updated = { ...portfolios[currentPortfolioId], name: newName.trim() }
+        usePortfolio.setState({
+            portfolios: { ...portfolios, [currentPortfolioId]: updated }
+        })
+        
+        // Update in database if user is logged in
+        const { userId } = usePortfolio.getState()
+        if (userId) {
+            const { createClient } = await import("@/utils/supabase/client")
+            const supabase = createClient()
+            await supabase.from('portfolios').update({ name: newName.trim() }).eq('id', currentPortfolioId)
+        }
+        
+        setIsRenameOpen(false)
     }
 
     // Filter suggestions
@@ -258,6 +300,8 @@ export function DashboardHome() {
 
         let weightedExpense = 0
         let weightedYTD = 0
+        let compliantValue = 0
+        let nonCompliantValue = 0
         const sectorMap = new Map<string, number>()
 
         itemsWithValue.forEach(item => {
@@ -265,7 +309,22 @@ export function DashboardHome() {
 
             if (item.type === 'Cash') {
                 sectorMap.set('Cash', (sectorMap.get('Cash') || 0) + weight)
+                compliantValue += item.currentValue // Cash is always compliant
                 return
+            }
+
+            if (item.type === 'Crypto') {
+                sectorMap.set('Crypto', (sectorMap.get('Crypto') || 0) + weight)
+                compliantValue += item.currentValue // Crypto treated as compliant for simplicity
+                return
+            }
+
+            // Check Shariah compliance
+            const isCompliant = checkCompliance(item.ticker, item.type)
+            if (isCompliant) {
+                compliantValue += item.currentValue
+            } else {
+                nonCompliantValue += item.currentValue
             }
 
             if (item.expenseRatio) weightedExpense += item.expenseRatio * weight
@@ -308,11 +367,20 @@ export function DashboardHome() {
             .sort((a, b) => b.weight - a.weight)
             .slice(0, 5)
 
+        // Calculate compliance percentage
+        const compliancePercent = totalVal > 0 ? (compliantValue / totalVal) * 100 : 0
+
         return {
             expenseRatio: weightedExpense,
             ytd: weightedYTD,
             sectors,
-            holdings
+            holdings,
+            compliancePercent,
+            totalHoldings: portfolioItems.length,
+            stockCount: portfolioItems.filter(i => i.type === 'Stock').length,
+            etfCount: portfolioItems.filter(i => i.type === 'ETF').length,
+            cryptoCount: portfolioItems.filter(i => i.type === 'Crypto').length,
+            cashCount: portfolioItems.filter(i => i.type === 'Cash').length
         }
     }, [portfolioItems, marketData, hasPortfolio, fxRates])
 
@@ -330,7 +398,7 @@ export function DashboardHome() {
 
                     <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                         {/* Portfolio Selector */}
-                        <div className="bg-white p-1 rounded-lg border shadow-sm">
+                        <div className="bg-white p-1 rounded-lg border shadow-sm flex items-center">
                             <Select
                                 value={currentPortfolioId}
                                 onValueChange={(val) => selectPortfolio(val)}
@@ -351,6 +419,17 @@ export function DashboardHome() {
                                     )}
                                 </SelectContent>
                             </Select>
+                            {!isAllSelected && currentPortfolio && currentPortfolio.id !== 'default' && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-gray-400 hover:text-gray-600"
+                                    onClick={openRenameDialog}
+                                    title="Rename Portfolio"
+                                >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                            )}
                         </div>
 
                         <Badge variant="outline" className={`bg-opacity-50 border gap-1 transition-colors ${isLoadingData ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
@@ -395,19 +474,25 @@ export function DashboardHome() {
                                 <Activity className="w-4 h-4 text-gray-400" />
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="space-y-2">
                             {portfolioStats ? (
                                 <>
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500 text-xs uppercase tracking-wide">Expense Ratio</span>
-                                        <span className="font-bold text-gray-900">{portfolioStats.expenseRatio.toFixed(2)}%</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500 text-xs uppercase tracking-wide">Est. YTD</span>
-                                        <span className={`font-bold ${portfolioStats.ytd >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {portfolioStats.ytd >= 0 ? '+' : ''}{portfolioStats.ytd.toFixed(2)}%
+                                        <span className="text-gray-500 text-xs uppercase tracking-wide">Shariah Compliant</span>
+                                        <span className={`font-bold ${portfolioStats.compliancePercent >= 80 ? 'text-green-600' : portfolioStats.compliancePercent >= 50 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                            {portfolioStats.compliancePercent.toFixed(1)}%
                                         </span>
                                     </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500 text-xs uppercase tracking-wide">Holdings</span>
+                                        <span className="font-bold text-gray-900">{portfolioStats.totalHoldings}</span>
+                                    </div>
+                                    {portfolioStats.expenseRatio > 0 && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-500 text-xs uppercase tracking-wide">Avg. Expense</span>
+                                            <span className="font-bold text-gray-900">{portfolioStats.expenseRatio.toFixed(2)}%</span>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 <div className="text-sm text-gray-400 text-center py-2">Add assets for metrics</div>
@@ -415,12 +500,12 @@ export function DashboardHome() {
                         </CardContent>
                     </Card>
 
-                    {/* Cost Basis */}
+                    {/* Cost Basis & Gain */}
                     <Card className="border-0 shadow-sm bg-white">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center justify-between">
                                 Cost Basis
-                                <Activity className="w-4 h-4 text-gray-400" />
+                                <Wallet className="w-4 h-4 text-gray-400" />
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -429,6 +514,35 @@ export function DashboardHome() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Holdings Summary Bar */}
+                {portfolioStats && portfolioStats.totalHoldings > 0 && (
+                    <div className="flex flex-wrap gap-3">
+                        {portfolioStats.stockCount > 0 && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                <Hash className="w-3 h-3 mr-1" /> {portfolioStats.stockCount} Stock{portfolioStats.stockCount > 1 ? 's' : ''}
+                            </Badge>
+                        )}
+                        {portfolioStats.etfCount > 0 && (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                <Hash className="w-3 h-3 mr-1" /> {portfolioStats.etfCount} ETF{portfolioStats.etfCount > 1 ? 's' : ''}
+                            </Badge>
+                        )}
+                        {portfolioStats.cryptoCount > 0 && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                <Hash className="w-3 h-3 mr-1" /> {portfolioStats.cryptoCount} Crypto
+                            </Badge>
+                        )}
+                        {portfolioStats.cashCount > 0 && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                <DollarSign className="w-3 h-3 mr-1" /> {portfolioStats.cashCount} Cash
+                            </Badge>
+                        )}
+                        <Badge variant="outline" className={`${portfolioStats.compliancePercent >= 80 ? 'bg-green-50 text-green-700 border-green-200' : portfolioStats.compliancePercent >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                            <ShieldCheck className="w-3 h-3 mr-1" /> {portfolioStats.compliancePercent.toFixed(0)}% Halal
+                        </Badge>
+                    </div>
+                )}
 
                 {/* Middle Section: Top Sectors & Holdings (Larger) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -689,6 +803,32 @@ export function DashboardHome() {
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
                             <Button onClick={handleConfirmAdd} disabled={!shares} className="bg-green-600 hover:bg-green-700">Add Holding</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Rename Portfolio Modal */}
+                <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Rename Portfolio</DialogTitle>
+                            <DialogDescription>
+                                Enter a new name for your portfolio.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <Label htmlFor="portfolioName">Portfolio Name</Label>
+                            <Input
+                                id="portfolioName"
+                                placeholder="e.g. TFSA, RRSP, Personal"
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                className="mt-2"
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsRenameOpen(false)}>Cancel</Button>
+                            <Button onClick={handleRenamePortfolio} disabled={!newName.trim()}>Save</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

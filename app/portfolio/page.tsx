@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { etfData } from "@/lib/etf-data"
 import { checkCompliance } from "@/lib/stock-data"
 import { usePortfolio } from "@/hooks/use-portfolio"
-import { Plus, Trash2, PieChart, Building2, ShieldCheck, TrendingUp, AlertTriangle, DollarSign } from "lucide-react"
+import { Plus, Trash2, PieChart, Building2, ShieldCheck, TrendingUp, AlertTriangle, DollarSign, Pencil } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 
@@ -67,6 +67,8 @@ export default function PortfolioPage() {
     const [isMounted, setIsMounted] = useState(false)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [newPortfolioName, setNewPortfolioName] = useState("")
+    const [isRenameOpen, setIsRenameOpen] = useState(false)
+    const [renameValue, setRenameValue] = useState("")
     const [apiSuggestions, setApiSuggestions] = useState<{ symbol: string, name: string, type: string }[]>([])
     const [isSearching, setIsSearching] = useState(false)
 
@@ -401,6 +403,30 @@ export default function PortfolioPage() {
         }
     }
 
+    const openRenameDialog = () => {
+        if (activePortfolio && !isAllSelected) {
+            setRenameValue(activePortfolio.name)
+            setIsRenameOpen(true)
+        }
+    }
+
+    const handleRename = async () => {
+        if (!renameValue.trim() || !activePortfolio || isAllSelected) return
+        
+        // Update in Zustand store
+        const updated = { ...portfolios[currentPortfolioId], name: renameValue.trim() }
+        usePortfolio.setState({
+            portfolios: { ...portfolios, [currentPortfolioId]: updated }
+        })
+        
+        // Update in database if user is logged in
+        if (userId) {
+            await supabase.from('portfolios').update({ name: renameValue.trim() }).eq('id', currentPortfolioId)
+        }
+        
+        setIsRenameOpen(false)
+    }
+
     // New Add Logic
     const initAddTo = (ticker: string, name: string, type: 'Stock' | 'ETF', extras?: any) => {
         if (isAllSelected) {
@@ -586,16 +612,27 @@ export default function PortfolioPage() {
                                 </DialogContent>
                             </Dialog>
                             {!isAllSelected && activePortfolio?.id !== 'default' && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-50"
-                                    onClick={() => {
-                                        if (confirm("Are you sure you want to delete this portfolio?")) deletePortfolio(activePortfolio.id)
-                                    }}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                        onClick={openRenameDialog}
+                                        title="Rename Portfolio"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-50"
+                                        onClick={() => {
+                                            if (confirm("Are you sure you want to delete this portfolio?")) deletePortfolio(activePortfolio.id)
+                                        }}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </>
                             )}
                         </div>
                     </div>
@@ -1228,6 +1265,32 @@ export default function PortfolioPage() {
                             >
                                 Add Crypto
                             </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Rename Portfolio Dialog */}
+                <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
+                    <DialogContent className="w-[90%] sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Rename Portfolio</DialogTitle>
+                            <CardDescription>
+                                Enter a new name for your portfolio.
+                            </CardDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                            <div className="space-y-2">
+                                <Label>Portfolio Name</Label>
+                                <Input
+                                    value={renameValue}
+                                    onChange={(e) => setRenameValue(e.target.value)}
+                                    placeholder="e.g., RRSP, TFSA, Kids"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsRenameOpen(false)}>Cancel</Button>
+                            <Button onClick={handleRename} disabled={!renameValue.trim()}>Save</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
