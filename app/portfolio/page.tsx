@@ -18,6 +18,9 @@ import { FeeAnalyzer } from "@/components/charts/fee-analyzer"
 import { GeographicBreakdown } from "@/components/charts/geographic-breakdown"
 import { ComplianceBreakdown } from "@/components/charts/compliance-breakdown"
 import { AssetAllocation } from "@/components/charts/asset-allocation"
+import { PortfolioPerformanceChart } from "@/components/charts/portfolio-performance-chart"
+import { PortfolioMetricsCards } from "@/components/charts/portfolio-metrics-cards"
+import { GainLossBreakdown } from "@/components/charts/gain-loss-breakdown"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -234,7 +237,7 @@ export default function PortfolioPage() {
         const fetchPrices = async () => {
             if (portfolioItems.length === 0) return
             const newData: Record<string, any> = {}
-            
+
             // Fetch stock/ETF prices
             const stockItems = portfolioItems.filter(item => item.type === 'Stock' || item.type === 'ETF')
             await Promise.all(stockItems.map(async (item) => {
@@ -353,10 +356,14 @@ export default function PortfolioPage() {
             { ticker: "NTDOY", name: "Nintendo Co., Ltd.", type: "Stock" },
         ]
 
-        const filter = (item: { ticker: string; name: string }) =>
-            !inPortfolio.has(item.ticker) &&
-            (item.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        const filter = (item: { ticker: string; name: string }) => {
+            if (inPortfolio.has(item.ticker)) return false
+            const query = searchQuery.toLowerCase()
+            const baseTicker = item.ticker.split('.')[0].toLowerCase()
+            return item.ticker.toLowerCase().includes(query) ||
+                baseTicker.includes(query) ||
+                item.name.toLowerCase().includes(query)
+        }
 
         if (searchQuery.trim().length >= 2 && apiSuggestions.length > 0) {
             const normalized = apiSuggestions
@@ -372,21 +379,10 @@ export default function PortfolioPage() {
             }
         }
 
-        const result = {
+        return {
             stocks: stockList.filter(filter),
             etfs: etfData.map(e => ({ ...e, type: 'ETF' })).filter(filter)
         }
-
-        if ("wshr".includes(searchQuery.toLowerCase()) && !inPortfolio.has("WSHR.NE")) {
-            result.etfs.push({
-                ticker: "WSHR.NE",
-                name: "Wealthsimple Shariah World Equity ETF",
-                type: "ETF",
-                expenseRatio: 0.5
-            } as any)
-        }
-
-        return result
     }, [portfolioItems, searchQuery, apiSuggestions])
 
     // Calculate Totals
@@ -412,18 +408,18 @@ export default function PortfolioPage() {
 
     const handleRename = async () => {
         if (!renameValue.trim() || !activePortfolio || isAllSelected) return
-        
+
         // Update in Zustand store
         const updated = { ...portfolios[currentPortfolioId], name: renameValue.trim() }
         usePortfolio.setState({
             portfolios: { ...portfolios, [currentPortfolioId]: updated }
         })
-        
+
         // Update in database if user is logged in
         if (userId) {
             await supabase.from('portfolios').update({ name: renameValue.trim() }).eq('id', currentPortfolioId)
         }
-        
+
         setIsRenameOpen(false)
     }
 
@@ -509,7 +505,7 @@ export default function PortfolioPage() {
         const amount = parseFloat(cryptoAmount)
         let avgPrice = parseFloat(cryptoAvgPrice)
         if (!cryptoSymbol || !cryptoName || !cryptoId || !amount || amount <= 0 || !avgPrice || avgPrice <= 0) return
-        
+
         // Convert to USD if different currency
         if (cryptoAvgPriceCurrency !== 'USD') {
             try {
@@ -524,7 +520,7 @@ export default function PortfolioPage() {
                 console.error("Failed to convert currency, using original price")
             }
         }
-        
+
         addCrypto(cryptoSymbol, cryptoName, cryptoId, amount, avgPrice, isAllSelected ? cryptoTargetPortfolioId : undefined)
         setCryptoSymbol("")
         setCryptoName("")
@@ -539,8 +535,8 @@ export default function PortfolioPage() {
     const filteredCryptos = useMemo(() => {
         if (!cryptoSearch) return COMMON_CRYPTOS
         const search = cryptoSearch.toLowerCase()
-        return COMMON_CRYPTOS.filter(c => 
-            c.symbol.toLowerCase().includes(search) || 
+        return COMMON_CRYPTOS.filter(c =>
+            c.symbol.toLowerCase().includes(search) ||
             c.name.toLowerCase().includes(search)
         )
     }, [cryptoSearch])
@@ -837,191 +833,191 @@ export default function PortfolioPage() {
                                                 </div>
                                                 <div className="hidden md:block overflow-x-auto">
                                                     <div className="min-w-[900px] divide-y divide-gray-100">
-                                                    {/* Table Header */}
-                                                    <div className={`grid gap-2 text-[10px] md:text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-gray-50/50 px-3 py-3 rounded-t-lg items-center ${isAllSelected ? 'grid-cols-[1.5fr_0.8fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]' : 'grid-cols-[2fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]'}`}>
-                                                        <div className="cursor-pointer hover:text-gray-900 flex items-center gap-1" onClick={() => requestSort('ticker')}>
-                                                            Asset {sortConfig.key === 'ticker' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                        {/* Table Header */}
+                                                        <div className={`grid gap-2 text-[10px] md:text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-gray-50/50 px-3 py-3 rounded-t-lg items-center ${isAllSelected ? 'grid-cols-[1.5fr_0.8fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]' : 'grid-cols-[2fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]'}`}>
+                                                            <div className="cursor-pointer hover:text-gray-900 flex items-center gap-1" onClick={() => requestSort('ticker')}>
+                                                                Asset {sortConfig.key === 'ticker' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            {isAllSelected && <div className="cursor-pointer hover:text-gray-900" onClick={() => requestSort('portfolio')}>
+                                                                Portfolio {sortConfig.key === 'portfolio' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>}
+                                                            <div className="cursor-pointer hover:text-gray-900" onClick={() => requestSort('compliance')}>
+                                                                Compliance {sortConfig.key === 'compliance' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('shares')}>
+                                                                Shares {sortConfig.key === 'shares' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('avgPrice')}>
+                                                                Avg Price (USD) {sortConfig.key === 'avgPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('mktPrice')}>
+                                                                Mkt Price (USD) {sortConfig.key === 'mktPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('costBasis')}>
+                                                                Cost Basis (USD) {sortConfig.key === 'costBasis' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('mktValue')}>
+                                                                Mkt Value (USD) {sortConfig.key === 'mktValue' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('gain')}>
+                                                                Gain (USD) {sortConfig.key === 'gain' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                                            </div>
+                                                            <div className="w-6"></div>
                                                         </div>
-                                                        {isAllSelected && <div className="cursor-pointer hover:text-gray-900" onClick={() => requestSort('portfolio')}>
-                                                            Portfolio {sortConfig.key === 'portfolio' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>}
-                                                        <div className="cursor-pointer hover:text-gray-900" onClick={() => requestSort('compliance')}>
-                                                            Compliance {sortConfig.key === 'compliance' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>
-                                                        <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('shares')}>
-                                                            Shares {sortConfig.key === 'shares' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>
-                                                        <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('avgPrice')}>
-                                                            Avg Price (USD) {sortConfig.key === 'avgPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>
-                                                        <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('mktPrice')}>
-                                                            Mkt Price (USD) {sortConfig.key === 'mktPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>
-                                                        <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('costBasis')}>
-                                                            Cost Basis (USD) {sortConfig.key === 'costBasis' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>
-                                                        <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('mktValue')}>
-                                                            Mkt Value (USD) {sortConfig.key === 'mktValue' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>
-                                                        <div className="text-right cursor-pointer hover:text-gray-900" onClick={() => requestSort('gain')}>
-                                                            Gain (USD) {sortConfig.key === 'gain' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                                        </div>
-                                                        <div className="w-6"></div>
-                                                    </div>
 
-                                                    {/* List Items */}
-                                                    {sortedItems.map((item, index) => {
-                                                        const itemData = marketData[item.ticker]
-                                                        const itemPrice = getItemUsdPrice(item)
-                                                        const itemValue = getItemUsdValue(item)
-                                                        const itemCost = getItemUsdCost(item)
-                                                        const itemGain = itemValue - itemCost
-                                                        const itemGainPct = itemCost > 0 ? (itemGain / itemCost) * 100 : 0
-                                                        const isCash = item.type === 'Cash'
-                                                        const isCrypto = item.type === 'Crypto'
+                                                        {/* List Items */}
+                                                        {sortedItems.map((item, index) => {
+                                                            const itemData = marketData[item.ticker]
+                                                            const itemPrice = getItemUsdPrice(item)
+                                                            const itemValue = getItemUsdValue(item)
+                                                            const itemCost = getItemUsdCost(item)
+                                                            const itemGain = itemValue - itemCost
+                                                            const itemGainPct = itemCost > 0 ? (itemGain / itemCost) * 100 : 0
+                                                            const isCash = item.type === 'Cash'
+                                                            const isCrypto = item.type === 'Crypto'
 
-                                                        // Compliance Handling
-                                                        let isCompliant = false
+                                                            // Compliance Handling
+                                                            let isCompliant = false
 
-                                                        if (isCash || isCrypto) {
-                                                            isCompliant = true
-                                                        } else {
-                                                            const checkRes = checkCompliance(item.ticker, item.type)
-                                                            isCompliant = checkRes
-                                                        }
-                                                        const statusText = isCrypto ? 'Cryptocurrency' : (isCompliant ? 'Shariah Compliant' : 'Non-Shariah Compliant')
+                                                            if (isCash || isCrypto) {
+                                                                isCompliant = true
+                                                            } else {
+                                                                const checkRes = checkCompliance(item.ticker, item.type)
+                                                                isCompliant = checkRes
+                                                            }
+                                                            const statusText = isCrypto ? 'Cryptocurrency' : (isCompliant ? 'Shariah Compliant' : 'Non-Shariah Compliant')
 
-                                                        // Find which portfolio this item belongs to
-                                                        const pNames = Object.values(portfolios)
-                                                            .filter(p => p.items.some(i => i.ticker === item.ticker && (i.shares === item.shares || i.amount === item.amount)))
-                                                            .map(p => p.name)
-                                                            .join(", ")
+                                                            // Find which portfolio this item belongs to
+                                                            const pNames = Object.values(portfolios)
+                                                                .filter(p => p.items.some(i => i.ticker === item.ticker && (i.shares === item.shares || i.amount === item.amount)))
+                                                                .map(p => p.name)
+                                                                .join(", ")
 
-                                                        return (
-                                                            <div key={`${item.ticker}-${index}`} className={`grid gap-2 px-3 py-3 items-center hover:bg-gray-50/50 transition-colors group text-sm border-b last:border-0 border-gray-100 ${isAllSelected ? 'grid-cols-[1.5fr_0.8fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]' : 'grid-cols-[2fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]'}`}>
-                                                                {/* 1. Asset Info */}
-                                                                <div className="min-w-0">
-                                                                    {isCash ? (
-                                                                        <>
-                                                                            <div className="font-bold text-gray-900 truncate text-sm">Cash</div>
-                                                                            <span className="text-xs text-muted-foreground truncate block">{item.currency || 'USD'}</span>
-                                                                        </>
-                                                                    ) : isCrypto ? (
-                                                                        <>
-                                                                            <div className="font-bold text-gray-900 truncate text-sm">{item.ticker}</div>
-                                                                            <span className="text-xs text-muted-foreground truncate block">{item.name}</span>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <Link href={`/screener?q=${item.ticker}`} className="hover:underline font-bold text-gray-900 truncate text-sm block">
-                                                                                {item.ticker}
-                                                                            </Link>
-                                                                            <span className="text-xs text-muted-foreground truncate block">{item.name}</span>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* 2. Portfolio Name - Only if All */}
-                                                                {isAllSelected && (
-                                                                    <div className="text-xs text-muted-foreground truncate" title={pNames}>
-                                                                        {pNames}
+                                                            return (
+                                                                <div key={`${item.ticker}-${index}`} className={`grid gap-2 px-3 py-3 items-center hover:bg-gray-50/50 transition-colors group text-sm border-b last:border-0 border-gray-100 ${isAllSelected ? 'grid-cols-[1.5fr_0.8fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]' : 'grid-cols-[2fr_1.5fr_0.8fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr]'}`}>
+                                                                    {/* 1. Asset Info */}
+                                                                    <div className="min-w-0">
+                                                                        {isCash ? (
+                                                                            <>
+                                                                                <div className="font-bold text-gray-900 truncate text-sm">Cash</div>
+                                                                                <span className="text-xs text-muted-foreground truncate block">{item.currency || 'USD'}</span>
+                                                                            </>
+                                                                        ) : isCrypto ? (
+                                                                            <>
+                                                                                <div className="font-bold text-gray-900 truncate text-sm">{item.ticker}</div>
+                                                                                <span className="text-xs text-muted-foreground truncate block">{item.name}</span>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <Link href={`/screener?q=${item.ticker}`} className="hover:underline font-bold text-gray-900 truncate text-sm block">
+                                                                                    {item.ticker}
+                                                                                </Link>
+                                                                                <span className="text-xs text-muted-foreground truncate block">{item.name}</span>
+                                                                            </>
+                                                                        )}
                                                                     </div>
-                                                                )}
 
-                                                                {/* 3. Compliance */}
-                                                                <div className="min-w-0">
-                                                                    {isCash ? (
-                                                                        <Badge variant="outline" className="text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto bg-gray-50 text-gray-600 border-gray-200">
-                                                                            <span>Cash</span>
-                                                                        </Badge>
-                                                                    ) : isCrypto ? (
-                                                                        <Badge variant="outline" className="text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto bg-orange-50 text-orange-700 border-orange-200">
-                                                                            <TrendingUp className="w-3 h-3 shrink-0" />
-                                                                            <span>Crypto</span>
-                                                                        </Badge>
-                                                                    ) : (
-                                                                        <Badge variant="outline" className={`text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto ${isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                                            {isCompliant ? <ShieldCheck className="w-3 h-3 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
-                                                                            <div className="flex flex-col leading-none gap-0.5">
-                                                                                <span>{isCompliant ? 'Shariah' : 'Non-Shariah'}</span>
-                                                                                <span>Compliant</span>
-                                                                            </div>
-                                                                        </Badge>
+                                                                    {/* 2. Portfolio Name - Only if All */}
+                                                                    {isAllSelected && (
+                                                                        <div className="text-xs text-muted-foreground truncate" title={pNames}>
+                                                                            {pNames}
+                                                                        </div>
                                                                     )}
-                                                                </div>
 
-                                                                {/* 4. Shares (Input) */}
-                                                                <div className="text-right">
-                                                                    <Input
-                                                                        disabled={isAllSelected}
-                                                                        type="number"
-                                                                        className="h-8 text-right font-mono text-xs border border-gray-200 bg-white hover:border-primary focus:border-primary px-2 w-full shadow-sm rounded-md"
-                                                                        value={isCash ? (item.amount ?? '') : (item.shares || '')}
-                                                                        placeholder="0"
-                                                                        onChange={(e) => {
-                                                                            const value = parseFloat(e.target.value)
-                                                                            if (isCash) {
-                                                                                updateCash(item.ticker, value)
-                                                                            } else {
-                                                                                updateHolding(item.ticker, value, item.avgPrice || 0)
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                </div>
+                                                                    {/* 3. Compliance */}
+                                                                    <div className="min-w-0">
+                                                                        {isCash ? (
+                                                                            <Badge variant="outline" className="text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto bg-gray-50 text-gray-600 border-gray-200">
+                                                                                <span>Cash</span>
+                                                                            </Badge>
+                                                                        ) : isCrypto ? (
+                                                                            <Badge variant="outline" className="text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto bg-orange-50 text-orange-700 border-orange-200">
+                                                                                <TrendingUp className="w-3 h-3 shrink-0" />
+                                                                                <span>Crypto</span>
+                                                                            </Badge>
+                                                                        ) : (
+                                                                            <Badge variant="outline" className={`text-[10px] w-auto inline-flex items-center gap-1 px-1.5 py-1 whitespace-nowrap h-auto ${isCompliant ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                                                                {isCompliant ? <ShieldCheck className="w-3 h-3 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
+                                                                                <div className="flex flex-col leading-none gap-0.5">
+                                                                                    <span>{isCompliant ? 'Shariah' : 'Non-Shariah'}</span>
+                                                                                    <span>Compliant</span>
+                                                                                </div>
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
 
-                                                                {/* 5. Avg Price (Input) */}
-                                                                <div className="text-right">
-                                                                    {isCash ? (
-                                                                        <span className="text-xs text-muted-foreground">—</span>
-                                                                    ) : (
+                                                                    {/* 4. Shares (Input) */}
+                                                                    <div className="text-right">
                                                                         <Input
                                                                             disabled={isAllSelected}
                                                                             type="number"
                                                                             className="h-8 text-right font-mono text-xs border border-gray-200 bg-white hover:border-primary focus:border-primary px-2 w-full shadow-sm rounded-md"
-                                                                            value={item.avgPrice || ''}
-                                                                            placeholder="0.00"
-                                                                            onChange={(e) => updateHolding(item.ticker, item.shares || 0, parseFloat(e.target.value))}
+                                                                            value={isCash ? (item.amount ?? '') : (item.shares || '')}
+                                                                            placeholder="0"
+                                                                            onChange={(e) => {
+                                                                                const value = parseFloat(e.target.value)
+                                                                                if (isCash) {
+                                                                                    updateCash(item.ticker, value)
+                                                                                } else {
+                                                                                    updateHolding(item.ticker, value, item.avgPrice || 0)
+                                                                                }
+                                                                            }}
                                                                         />
-                                                                    )}
-                                                                </div>
+                                                                    </div>
 
-                                                                {/* 6. Market Price (Read Only) */}
-                                                                <div className="text-right font-mono font-medium text-blue-600">
-                                                                    ${itemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    {itemData?.currency && itemData.currency !== 'USD' && !isCash && (
-                                                                        <div className="text-[10px] text-muted-foreground">{itemData.currency} → USD</div>
-                                                                    )}
-                                                                </div>
+                                                                    {/* 5. Avg Price (Input) */}
+                                                                    <div className="text-right">
+                                                                        {isCash ? (
+                                                                            <span className="text-xs text-muted-foreground">—</span>
+                                                                        ) : (
+                                                                            <Input
+                                                                                disabled={isAllSelected}
+                                                                                type="number"
+                                                                                className="h-8 text-right font-mono text-xs border border-gray-200 bg-white hover:border-primary focus:border-primary px-2 w-full shadow-sm rounded-md"
+                                                                                value={item.avgPrice || ''}
+                                                                                placeholder="0.00"
+                                                                                onChange={(e) => updateHolding(item.ticker, item.shares || 0, parseFloat(e.target.value))}
+                                                                            />
+                                                                        )}
+                                                                    </div>
 
-                                                                {/* 7. Cost Basis */}
-                                                                <div className="text-right font-mono text-muted-foreground text-xs">
-                                                                    ${itemCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                                                </div>
+                                                                    {/* 6. Market Price (Read Only) */}
+                                                                    <div className="text-right font-mono font-medium text-blue-600">
+                                                                        ${itemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        {itemData?.currency && itemData.currency !== 'USD' && !isCash && (
+                                                                            <div className="text-[10px] text-muted-foreground">{itemData.currency} → USD</div>
+                                                                        )}
+                                                                    </div>
 
-                                                                {/* 8. Market Value */}
-                                                                <div className="text-right font-mono font-bold text-gray-900 text-sm">
-                                                                    ${itemValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                                                </div>
+                                                                    {/* 7. Cost Basis */}
+                                                                    <div className="text-right font-mono text-muted-foreground text-xs">
+                                                                        ${itemCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                                    </div>
 
-                                                                {/* 9. Gain */}
-                                                                <div className={`text-right text-xs font-bold leading-tight ${itemGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                    <div>{itemGain >= 0 ? '+' : ''}${itemGain.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                                                                    <div className="opacity-80 text-[10px]">{itemGainPct.toFixed(1)}%</div>
-                                                                </div>
+                                                                    {/* 8. Market Value */}
+                                                                    <div className="text-right font-mono font-bold text-gray-900 text-sm">
+                                                                        ${itemValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                                    </div>
 
-                                                                {/* Actions */}
-                                                                <div className="flex justify-end">
-                                                                    {!isAllSelected && (
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50" onClick={() => removeFromPortfolio(item.ticker)}>
-                                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                                        </Button>
-                                                                    )}
+                                                                    {/* 9. Gain */}
+                                                                    <div className={`text-right text-xs font-bold leading-tight ${itemGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                        <div>{itemGain >= 0 ? '+' : ''}${itemGain.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                                                                        <div className="opacity-80 text-[10px]">{itemGainPct.toFixed(1)}%</div>
+                                                                    </div>
+
+                                                                    {/* Actions */}
+                                                                    <div className="flex justify-end">
+                                                                        {!isAllSelected && (
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50" onClick={() => removeFromPortfolio(item.ticker)}>
+                                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        )
-                                                    })}
+                                                            )
+                                                        })}
+                                                    </div>
                                                 </div>
-                                            </div>
                                             </>
                                         )}
                                     </CardContent>
@@ -1038,12 +1034,36 @@ export default function PortfolioPage() {
                                 <p>Add assets to your portfolio to unlock these insights.</p>
                             </div>
                         ) : (
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <AssetAllocation items={nonCashItems} />
-                                <ComplianceBreakdown items={nonCashItems} />
-                                <GeographicBreakdown items={nonCashItems} />
-                                <FeeAnalyzer items={nonCashItems} />
-                            </div>
+                            <>
+                                {/* Performance Tracking Section */}
+                                <div className="space-y-6">
+                                    <PortfolioPerformanceChart
+                                        currentValue={totalValue}
+                                        currentCost={totalCost}
+                                        items={portfolioItems}
+                                    />
+
+                                    <PortfolioMetricsCards
+                                        totalReturn={totalGain}
+                                        totalReturnPercent={totalGainPercent}
+                                        items={portfolioItems}
+                                        marketData={marketData}
+                                    />
+
+                                    <GainLossBreakdown
+                                        items={portfolioItems}
+                                        marketData={marketData}
+                                    />
+                                </div>
+
+                                {/* Existing Analytics */}
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <AssetAllocation items={nonCashItems} />
+                                    <ComplianceBreakdown items={nonCashItems} />
+                                    <GeographicBreakdown items={nonCashItems} />
+                                    <FeeAnalyzer items={nonCashItems} />
+                                </div>
+                            </>
                         )}
                     </TabsContent>
                 </Tabs>
@@ -1187,7 +1207,7 @@ export default function PortfolioPage() {
                                     </Select>
                                 </div>
                             )}
-                            
+
                             <div className="space-y-2">
                                 <Label>Select Cryptocurrency</Label>
                                 <Input
@@ -1203,7 +1223,7 @@ export default function PortfolioPage() {
                                 )}
                                 <div className="max-h-32 overflow-y-auto border rounded-lg divide-y">
                                     {filteredCryptos.map(crypto => (
-                                        <div 
+                                        <div
                                             key={crypto.id}
                                             className="flex items-center justify-between p-2 hover:bg-muted cursor-pointer"
                                             onClick={() => selectCrypto(crypto)}
@@ -1259,8 +1279,8 @@ export default function PortfolioPage() {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsCryptoOpen(false)}>Cancel</Button>
-                            <Button 
-                                onClick={confirmAddCrypto} 
+                            <Button
+                                onClick={confirmAddCrypto}
                                 disabled={!cryptoSymbol || !cryptoAmount || !cryptoAvgPrice}
                             >
                                 Add Crypto
