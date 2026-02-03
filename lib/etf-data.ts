@@ -558,7 +558,7 @@ export const etfData: ETF[] = [
     shariahCertification: "Yasaar Limited Certified",
   },
   {
-    ticker: "WSHR",
+    ticker: "WSHR.NE",
     name: "Wealthsimple Shariah World Equity Index ETF",
     focus: "Global Large Blend (Quality)",
     listing: "CA",

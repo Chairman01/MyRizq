@@ -239,7 +239,7 @@ export default function PortfolioPage() {
             const stockItems = portfolioItems.filter(item => item.type === 'Stock' || item.type === 'ETF')
             await Promise.all(stockItems.map(async (item) => {
                 try {
-                    const queryTicker = item.ticker === 'WSHR' ? 'WSHR.NE' : item.ticker
+                    const queryTicker = item.ticker
                     const res = await fetch(`/api/quote?ticker=${queryTicker}`)
                     if (res.ok) {
                         const data = await res.json()
