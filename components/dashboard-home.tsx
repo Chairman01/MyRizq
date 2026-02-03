@@ -21,11 +21,14 @@ import { FeeAnalyzer } from "@/components/charts/fee-analyzer"
 import { GeographicBreakdown } from "@/components/charts/geographic-breakdown"
 import { ComplianceBreakdown } from "@/components/charts/compliance-breakdown"
 import { AssetAllocation } from "@/components/charts/asset-allocation"
+import { PortfolioPerformanceChart } from "@/components/charts/portfolio-performance-chart"
+import { PortfolioMetricsCards } from "@/components/charts/portfolio-metrics-cards"
+import { GainLossBreakdown } from "@/components/charts/gain-loss-breakdown"
 
 const COLORS = ['#16a34a', '#22c55e', '#4ade80', '#86efac', '#bbf7d0', '#059669', '#10b981', '#34d399']
 const TYPE_COLORS: Record<string, string> = {
     'ETF': '#8b5cf6',
-    'Stock': '#3b82f6', 
+    'Stock': '#3b82f6',
     'Crypto': '#f97316',
     'Cash': '#22c55e'
 }
@@ -69,7 +72,7 @@ export function DashboardHome() {
             setIsLoadingData(true)
 
             const newData: Record<string, any> = {}
-            
+
             // Fetch stock/ETF prices
             const stockItems = portfolioItems.filter(item => item.type === 'Stock' || item.type === 'ETF')
             await Promise.all(stockItems.map(async (item) => {
@@ -189,39 +192,39 @@ export function DashboardHome() {
 
     const handleRenamePortfolio = async () => {
         if (!newName.trim() || !currentPortfolio || isAllSelected) return
-        
+
         const { portfolios } = usePortfolio.getState()
         const updated = { ...portfolios[currentPortfolioId], name: newName.trim() }
         usePortfolio.setState({
             portfolios: { ...portfolios, [currentPortfolioId]: updated }
         })
-        
+
         const { userId } = usePortfolio.getState()
         if (userId) {
             const { createClient } = await import("@/utils/supabase/client")
             const supabase = createClient()
             await supabase.from('portfolios').update({ name: newName.trim() }).eq('id', currentPortfolioId)
         }
-        
+
         setIsRenameOpen(false)
     }
 
     // CALCULATE REAL VALUES - with detailed item data
     const hasPortfolio = portfolioItems.length > 0
-    
+
     const calculatedItems = useMemo(() => {
         return portfolioItems.map(item => {
             const liveData = marketData[item.ticker]
             const currentPrice = getItemUsdPrice(item)
             const currentValue = getItemUsdValue(item)
-            const costBasis = item.type === 'Cash' 
-                ? currentValue 
+            const costBasis = item.type === 'Cash'
+                ? currentValue
                 : (item.shares || 0) * (item.avgPrice || 0)
             const gain = currentValue - costBasis
             const gainPercent = costBasis > 0 ? (gain / costBasis) * 100 : 0
             const dayChange = item.type === 'Cash' ? 0 : (item.shares || 0) * (liveData?.usdChange ?? liveData?.change ?? 0)
             const dayChangePercent = liveData?.changePercent || 0
-            
+
             return {
                 ...item,
                 currentPrice,
@@ -253,7 +256,7 @@ export function DashboardHome() {
 
         calculatedItems.forEach(item => {
             const weight = item.currentValue / totalValue
-            
+
             // Type breakdown
             typeBreakdown[item.type] = (typeBreakdown[item.type] || 0) + item.currentValue
 
@@ -311,7 +314,7 @@ export function DashboardHome() {
         const performersToday = [...calculatedItems]
             .filter(i => i.type !== 'Cash')
             .sort((a, b) => b.dayChangePercent - a.dayChangePercent)
-        
+
         const bestToday = performersToday.slice(0, 3)
         const worstToday = performersToday.slice(-3).reverse()
 
@@ -569,8 +572,8 @@ export function DashboardHome() {
                             {portfolioStats ? (
                                 <div className="space-y-3">
                                     {portfolioStats.holdings.map((h, i) => (
-                                        <Link 
-                                            key={h.ticker} 
+                                        <Link
+                                            key={h.ticker}
                                             href={h.type === 'Cash' ? '/portfolio' : (h.type === 'Crypto' ? '/portfolio' : `/screener?q=${h.ticker}`)}
                                             className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all cursor-pointer group"
                                         >
@@ -642,11 +645,33 @@ export function DashboardHome() {
                             <p>Add ETFs or stocks to see detailed breakdowns.</p>
                         </div>
                     ) : (
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <AssetAllocation items={nonCashItems} />
-                            <ComplianceBreakdown items={nonCashItems} />
-                            <GeographicBreakdown items={nonCashItems} />
-                            <FeeAnalyzer items={nonCashItems} />
+                        <div className="space-y-6">
+                            {/* Performance Tracking Section */}
+                            <PortfolioPerformanceChart
+                                currentValue={totalValue}
+                                currentCost={totalCost}
+                                items={portfolioItems}
+                            />
+
+                            <PortfolioMetricsCards
+                                totalReturn={totalGain}
+                                totalReturnPercent={totalGainPercent}
+                                items={portfolioItems}
+                                marketData={marketData}
+                            />
+
+                            <GainLossBreakdown
+                                items={portfolioItems}
+                                marketData={marketData}
+                            />
+
+                            {/* Existing Analytics */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <AssetAllocation items={nonCashItems} />
+                                <ComplianceBreakdown items={nonCashItems} />
+                                <GeographicBreakdown items={nonCashItems} />
+                                <FeeAnalyzer items={nonCashItems} />
+                            </div>
                         </div>
                     )}
                 </div>
