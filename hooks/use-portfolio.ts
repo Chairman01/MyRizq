@@ -146,15 +146,54 @@ export const usePortfolio = create<PortfolioState>()(
                 const { portfolios, userId } = get()
                 const all = Object.values(portfolios).filter(p => userId ? p.ownerId === userId : !p.ownerId)
 
-                // Merge items
-                const mergedItems: PortfolioItem[] = []
-                all.forEach(p => mergedItems.push(...p.items))
+                // Merge items - combine duplicates by ticker+type
+                const itemMap = new Map<string, PortfolioItem>()
+                
+                all.forEach(p => {
+                    p.items.forEach(item => {
+                        const key = `${item.ticker}-${item.type}`
+                        const existing = itemMap.get(key)
+                        
+                        if (existing) {
+                            // Combine the items
+                            if (item.type === 'Cash') {
+                                // Cash: just add amounts
+                                existing.amount = (existing.amount || 0) + (item.amount || 0)
+                            } else if (item.type === 'Crypto') {
+                                // Crypto: combine shares and calculate weighted avg price
+                                const existingShares = existing.shares || 0
+                                const existingAvg = existing.avgPrice || 0
+                                const newShares = item.shares || 0
+                                const newAvg = item.avgPrice || 0
+                                const totalShares = existingShares + newShares
+                                const totalCost = (existingShares * existingAvg) + (newShares * newAvg)
+                                existing.shares = totalShares
+                                existing.avgPrice = totalShares > 0 ? totalCost / totalShares : 0
+                            } else {
+                                // Stock/ETF: combine shares and calculate weighted avg price
+                                const existingShares = existing.shares || 0
+                                const existingAvg = existing.avgPrice || 0
+                                const newShares = item.shares || 0
+                                const newAvg = item.avgPrice || 0
+                                const totalShares = existingShares + newShares
+                                const totalCost = (existingShares * existingAvg) + (newShares * newAvg)
+                                existing.shares = totalShares
+                                existing.avgPrice = totalShares > 0 ? totalCost / totalShares : 0
+                                // Also combine allocation for simulator mode
+                                existing.allocation = (existing.allocation || 0) + (item.allocation || 0)
+                            }
+                        } else {
+                            // First occurrence - clone the item
+                            itemMap.set(key, { ...item })
+                        }
+                    })
+                })
 
                 return {
                     id: 'all',
                     name: 'All Portfolios',
                     type: 'tracker',
-                    items: mergedItems,
+                    items: Array.from(itemMap.values()),
                     ownerId: userId || undefined
                 } as Portfolio
             },
