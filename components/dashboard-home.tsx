@@ -5,7 +5,7 @@ import { usePortfolio } from "@/hooks/use-portfolio"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePaywall } from "@/hooks/use-paywall"
 import { TrendingUp, DollarSign, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Activity, Search, PlusCircle, X, ShieldCheck, Pencil, Hash, Percent, Wallet } from "lucide-react"
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+// Chart imports removed - using summary instead of fake historical data
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -276,8 +276,6 @@ export function DashboardHome() {
     const totalGain = totalValue - totalCost
     const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0
     const dayChangePercent = totalValue > 0 ? (dayChangeValue / totalValue) * 100 : 0
-
-    const chartData = hasPortfolio ? generateMockHistory(totalValue) : []
 
     // Derived Stats
     const portfolioStats = useMemo(() => {
@@ -610,54 +608,46 @@ export function DashboardHome() {
 
                 {/* Main Content Grid - Charts & List */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Chart Section */}
+                    {/* Portfolio Summary Section */}
                     <div className="space-y-6">
                         <Card className="border border-gray-100 shadow-sm">
                             <CardHeader className="flex flex-row items-center justify-between">
-                                <CardTitle className="text-lg">Performance</CardTitle>
+                                <CardTitle className="text-lg">Portfolio Summary</CardTitle>
                             </CardHeader>
                             <CardContent className="h-[300px]">
                                 {hasPortfolio ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={chartData}>
-                                            <defs>
-                                                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#16a34a" stopOpacity={0.1} />
-                                                    <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                            <XAxis
-                                                dataKey="date"
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fontSize: 12, fill: '#6B7280' }}
-                                                minTickGap={30}
-                                            />
-                                            <YAxis
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fontSize: 12, fill: '#6B7280' }}
-                                                tickFormatter={(value) => `$${value}`}
-                                            />
-                                            <Tooltip
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                formatter={(value: number) => [`$${value.toFixed(2)}`, 'Value']}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="value"
-                                                stroke="#16a34a"
-                                                strokeWidth={2}
-                                                fillOpacity={1}
-                                                fill="url(#colorValue)"
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
+                                    <div className="h-full flex flex-col justify-center space-y-6">
+                                        <div className="text-center">
+                                            <p className="text-sm text-gray-500 uppercase tracking-wide mb-2">Total Value</p>
+                                            <p className="text-4xl font-bold text-gray-900">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-gray-50 rounded-lg p-4 text-center">
+                                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Cost Basis</p>
+                                                <p className="text-xl font-bold text-gray-700">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                            </div>
+                                            <div className={`rounded-lg p-4 text-center ${totalGain >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Gain/Loss</p>
+                                                <p className={`text-xl font-bold ${totalGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {totalGain >= 0 ? '+' : ''}{totalGainPercent.toFixed(2)}%
+                                                </p>
+                                                <p className={`text-sm ${totalGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {totalGain >= 0 ? '+' : ''}${Math.abs(totalGain).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {dayChangeValue !== 0 && (
+                                            <div className="text-center text-sm text-gray-500">
+                                                Today: <span className={dayChangeValue >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                    {dayChangeValue >= 0 ? '+' : ''}{dayChangeValue.toFixed(2)} ({dayChangePercent.toFixed(2)}%)
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 rounded-lg border border-dashed text-center p-4">
                                         <TrendingUp className="w-8 h-8 mb-2 opacity-50" />
-                                        <p>Your chart will appear here once you add assets.</p>
+                                        <p>Your summary will appear here once you add assets.</p>
                                     </div>
                                 )}
                             </CardContent>
